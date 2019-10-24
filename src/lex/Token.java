@@ -14,6 +14,8 @@ public class Token {
     private int intValue;
     // 实数值
     private double realValue;
+    // 行号
+    private int lineNum;
 
     public TokenType getType () {
         return type;
@@ -45,5 +47,13 @@ public class Token {
 
     public void setRealValue (double realValue) {
         this.realValue = realValue;
+    }
+
+    public int getLineNum() {
+        return lineNum;
+    }
+
+    public void setLineNum(int lineNum) {
+        this.lineNum = lineNum;
     }
 }

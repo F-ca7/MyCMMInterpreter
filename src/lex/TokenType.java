@@ -49,5 +49,6 @@ public enum TokenType {
 
     // 其他
     EOF,            // 文件尾
+    UNKNOWN,        // 未知
 }
 

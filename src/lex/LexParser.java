@@ -1,5 +1,7 @@
 package lex;
 
+import exception.LexException;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -25,7 +27,8 @@ public class LexParser {
     private static final HashMap<String,Integer> reserveWords = new HashMap<>();
 
     private static TokenType[] values = TokenType.values();
-
+    // 当前行号
+    private static int lineNum = 1;
     // 源文件路径
     private String srcFilePath;
     // 源代码
@@ -90,63 +93,44 @@ public class LexParser {
     /**
      * 返回下一个token
      */
-    public Token getNextToken() {
+    public Token getNextToken() throws LexException{
         Token token = new Token();
-        token.setType(TokenType.EOF);
+        token.setType(TokenType.UNKNOWN);
+        token.setLineNum(lineNum);
+        readCharSkip();
         if(curCh == END_OF_TEXT) {
+            token.setType(TokenType.EOF);
             return token;
         }
-        readCharSkip();
         // 先判断出可以直接识别的token
         if(directRecognized.containsKey(curCh)) {
             token.setType(values[directRecognized.get(curCh)]);
             return token;
         } else if(curCh == '/') {
-            // 判断是单行注释还是多行注释
             readCharSkip();
-            if(curCh == '*') {
-                // 多行注释
-                while (true) {
-                    readCharSkip();
-                    if(curCh =='*') {
-                        readCharSkip();
-                        if(curCh == '/') {
-                            token.setType(TokenType.MULTIPLE_LINE_COMMENT);
-                            break;
-                        }
-                    }
-                }
-            }
-            else if(curCh == '/') {
-                readLineEnd();
-                token.setType(TokenType.SINGLE_LINE_COMMENT);
-            }
-            else {
-                token.setType(TokenType.DIVIDE);
-            }
-        }
-        else if(curCh == '=') {
+            // 判断是单行注释还是多行注释
+            parseSplash(token);
+
+        }  else if(curCh == '=') {
             // 判断赋值还是相等
             readChar();
             if(curCh == '=') {
                 token.setType(TokenType.EQUAL);
-            }
-            else {
+            } else {
                 token.setType(TokenType.ASSIGN);
                 pointer--;
             }
-        }
-        else if(curCh == '<') {//判断小于还是不等于
+        } else if(curCh == '<') {//判断小于还是不等于
             readChar();
             if(curCh =='>') {
                 token.setType(TokenType.NOT_EQUAL);
-            }
-            else {
+            } else {
                 token.setType(TokenType.LESS);
                 pointer--;
             }
-        }
-        else {
+        } else if(curCh == ';') {
+            token.setType(TokenType.SEMICOLON);
+        } else {
             if(isCharDigit(curCh)) {
                 // 数字常量
                 boolean isReal = false;
@@ -159,6 +143,9 @@ public class LexParser {
                             isReal = true;
                         }
                         readChar();
+                    } else if(Character.isLetter(curCh)) {
+                        // 数字后面不能跟字母作为标识符
+                        throw new LexException("IDENTIFIER cannot start with digit at line "+lineNum);
                     }
                     else {
                         pointer--;
@@ -172,16 +159,17 @@ public class LexParser {
                 if(isReal) {
                     token.setType(TokenType.REAL_LITERAL);
                     token.setRealValue(Double.parseDouble(strVal));
-                }
-                else {
+                } else {
                     token.setType(TokenType.INT_LITERAL);
                     token.setIntValue(Integer.parseInt(strVal));
                 }
             }
             else if(Character.isLetter(curCh)) {
+                // 字母开头
                 // 说明接下来是一个标识符或者关键字
                 while (true) {
-                    if((curCh >='A'&& curCh <='Z')||(curCh >='a'&& curCh <='z')||isCharDigit(curCh)|| curCh == '_') {
+                    if(Character.isLetter(curCh)
+                            || isCharDigit(curCh)|| curCh == '_') {
                         stringBuilder.append(curCh);
                         readChar();
                     } else {
@@ -200,19 +188,49 @@ public class LexParser {
                 }
             }
         }
-
-
         return token;
     }
 
     /**
-     * 条阔空白符
+     * 分析 以斜杠/ 开头
+     * 判断是多行注释, 单行注释, 还是除号
+     * @param token 待解析类型的token
+     */
+    private void parseSplash(Token token) {
+        if(curCh == '*') {
+            // 多行注释
+            while (true) {
+                readCharSkip();
+                if(curCh =='*') {
+                    readCharSkip();
+                    if(curCh == '/') {
+                        token.setType(TokenType.MULTIPLE_LINE_COMMENT);
+                        break;
+                    }
+                }
+            }
+        } else if(curCh == '/') {
+            // 单行行注释
+            readLineEnd();
+            token.setType(TokenType.SINGLE_LINE_COMMENT);
+        } else {
+            // 除号
+            token.setType(TokenType.DIVIDE);
+        }
+    }
+
+    /**
+     * 跳过空白符
      */
     private void readCharSkip () {
         do {
             if (pointer < sourceCode.length()) {
                 curCh = sourceCode.charAt(pointer);
+                // 字符指针后移
                 pointer++;
+                if(curCh == '\n') {
+                    lineNum++;
+                }
             } else {
                 // 直到文件尾
                 curCh = END_OF_TEXT;
