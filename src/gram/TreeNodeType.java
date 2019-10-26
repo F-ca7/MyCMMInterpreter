@@ -1,8 +1,8 @@
 package gram;
 
 /**
- * @author FANG
  * @description 语法树结点类型
+ * @author FANG
  * @date 2019/10/23 16:43
  **/
 public enum TreeNodeType {

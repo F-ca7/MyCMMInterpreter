@@ -2,7 +2,7 @@ package gram;
 
 import exception.GramException;
 import exception.LexException;
-import lex.LexParser;
+import lex.Lexer;
 import lex.Token;
 import lex.TokenType;
 
@@ -18,21 +18,21 @@ import java.util.Stack;
  **/
 public class GramParser {
     // 词法分析器
-    private LexParser lexicalParser;
+    private Lexer lexer;
     // 当前token
-    private Token current;
+    private Token curToken;
     // 一条语句对应一棵语法树
     private List<TreeNode> treeNodes = new ArrayList<>();
 
-    public GramParser(LexParser lexicalParser) {
-        this.lexicalParser = lexicalParser;
+    public GramParser(Lexer lexicalParser) {
+        this.lexer = lexicalParser;
     }
 
 
     public static void main(String[] args) {
-        LexParser parser = new LexParser("E:\\desktop\\MyCMMInterpreter\\test_gram_err1.cmm");
-        parser.getSourceCode();
-        GramParser grammaticalParser = new GramParser(parser);
+        Lexer lexer = new Lexer("E:\\desktop\\MyCMMInterpreter\\test_lex_err4.cmm");
+        lexer.loadSourceCode();
+        GramParser grammaticalParser = new GramParser(lexer);
         try {
             grammaticalParser.startParse();
         } catch (LexException e) {
@@ -48,10 +48,10 @@ public class GramParser {
 
     private void getNextToken() throws LexException {
         do {
-            current = lexicalParser.getNextToken();
-        }while (current.getType()== TokenType.SINGLE_LINE_COMMENT ||
-                current.getType() == TokenType.MULTIPLE_LINE_COMMENT ||
-                current == null);
+            curToken = lexer.getNextToken();
+        }while (curToken.getType()== TokenType.SINGLE_LINE_COMMENT ||
+                curToken.getType() == TokenType.MULTIPLE_LINE_COMMENT ||
+                curToken == null);
     }
 
     public void startParse() throws Exception {
@@ -70,13 +70,13 @@ public class GramParser {
      * @param needNext 是否需要下一个token
      */
     private TreeNode parseStatement(boolean isRecursive,boolean needNext) throws Exception {
-        if(current == null || current.getType() == TokenType.SEMICOLON|| needNext) {
+        if(needNext || curToken == null || curToken.getType() == TokenType.SEMICOLON) {
             getNextToken();
         }
         TreeNode node = new TreeNode();
         node.setType(TreeNodeType.NULL);
-        if(current.getType()!= TokenType.EOF) {
-            switch (current.getType()) {
+        if(curToken.getType()!= TokenType.EOF) {
+            switch (curToken.getType()) {
                 case INT:
                     node = parseDeclarationStatement(TokenType.INT);
                     break;
@@ -98,11 +98,11 @@ public class GramParser {
                 case WHILE:
                     node = parseWhileStatement();
                     break;
-                case L_ANGLE_BRACKET:
+                case L_BRACE:
                     node = parseStatementBlock(false);
                     break;
                 default:
-                    throw new RuntimeException("unexpected token!");
+                    throw new GramException("Unexpected token at line " + curToken.getLineNum());
             }
         }
         if(!isRecursive && node.getType()!= TreeNodeType.NULL) {
@@ -114,16 +114,20 @@ public class GramParser {
         return node;
     }
 
+    /**
+     * 解析语句块
+     * @param needNext 是否需要下一个token
+     */
     private TreeNode parseStatementBlock(boolean needNext) throws Exception {
         TreeNode node = new TreeNode();
         node.setType(TreeNodeType.STATEMENT_BLOCK);
         if(needNext) {
-            matchTokenNext(TokenType.L_ANGLE_BRACKET);
+            matchTokenNext(TokenType.L_BRACE);
+        } else {
+            matchToken(TokenType.L_BRACE);
         }
-        else {
-            matchToken(TokenType.L_ANGLE_BRACKET);
-        }
-        while (!checkTokenNext(TokenType.R_ANGLE_BRACKET)) {
+        while (!checkTokenNext(TokenType.R_BRACE)) {
+            // 把每条语句存储到结点中
             node.addStatement(parseStatement(true,false));
         }
 
@@ -141,7 +145,7 @@ public class GramParser {
         matchTokenNext(TokenType.IDENTIFIER);
         TreeNode left = new TreeNode();
         left.setType(TreeNodeType.IDENTIFIER);
-        left.setSymbolName(current.getStringValue());
+        left.setSymbolName(curToken.getStringValue());
         node.left = left;
         getNextToken();
         if(checkToken(TokenType.ASSIGN)) {
@@ -149,28 +153,27 @@ public class GramParser {
             // 右边是算术表达式
             node.right = parseArithmeticExpression();
             matchToken(TokenType.SEMICOLON);
-        } else if(checkToken(TokenType.L_SQUARE_BRACKET)) {
+        } else if(checkToken(TokenType.L_BRACKET)) {
             // 如果后面接的是[
             // 则是数组
             isArray = true;
             node.right = parseArithmeticExpression();
-            matchToken(TokenType.R_SQUARE_BRACKET);
+            matchToken(TokenType.R_BRACKET);
             matchTokenNext(TokenType.SEMICOLON);
         }
+        // 设置结点类型
         switch (type) {
             case INT:
                 if(isArray) {
                     node.setType(TreeNodeType.INT_ARRAY_DECLARATION);
-                }
-                else {
+                } else {
                     node.setType(TreeNodeType.INT_DECLARATION);
                 }
                 break;
             case REAL:
                 if(isArray) {
                     node.setType(TreeNodeType.REAL_ARRAY_DECLARATION);
-                }
-                else {
+                } else {
                     node.setType(TreeNodeType.REAL_DECLARATION);
                 }
         }
@@ -187,21 +190,21 @@ public class GramParser {
         TreeNode left = new TreeNode();
         List<Token> tokens = new ArrayList<>();
         left.setType(TreeNodeType.IDENTIFIER);
-        left.setSymbolName(current.getStringValue());
-        tokens.add(current);
+        left.setSymbolName(curToken.getStringValue());
+        tokens.add(curToken);
         getNextToken();
-        switch (current.getType()) {
+        switch (curToken.getType()) {
             case ASSIGN:
                 node.left = left;
                 node.right = parseArithmeticExpression();
                 matchToken(TokenType.SEMICOLON);
                 break;
-            case L_SQUARE_BRACKET:
+            case L_BRACKET:
                 do {
-                    tokens.add(current);
+                    tokens.add(curToken);
                     getNextToken();
-                }while (current.getType() != TokenType.R_SQUARE_BRACKET);
-                tokens.add(current);
+                } while (curToken.getType() != TokenType.R_BRACKET);
+                tokens.add(curToken);
                 node.left = parseArrayAccess(tokens);
                 matchTokenNext(TokenType.ASSIGN);
                 node.right = parseArithmeticExpression();
@@ -222,37 +225,41 @@ public class GramParser {
         TreeNode left = new TreeNode();
         left.setType(TreeNodeType.IDENTIFIER);
         matchTokenNext(TokenType.IDENTIFIER);
-        left.setSymbolName(current.getStringValue());
+        left.setSymbolName(curToken.getStringValue());
         node.left = left;
         matchTokenNext(TokenType.SEMICOLON);
 
         return node;
     }
 
+    /**
+     * 解析if语句
+     */
     private TreeNode parseIfStatement() throws Exception {
         TreeNode node = new TreeNode();
         node.setType(TreeNodeType.IF);
-        matchTokenNext(TokenType.L_BRACKET);
+        // bool表达式
+        matchTokenNext(TokenType.L_PARENTHESIS);
         node.setCondition(parseRelationalExpression());
-        matchToken(TokenType.R_BRACKET);
+        matchToken(TokenType.R_PARENTHESIS);
+        // 满足条件的语句块
         node.left = parseStatementBlock(true);
         while (true) {
             if (checkTokenNext(TokenType.ELSE)) {
+                // 判断是else if还是else
                 if (checkTokenNext(TokenType.IF)) {
                     TreeNode elseIf= new TreeNode();
                     elseIf.setType(TreeNodeType.ELSE_IF);
-                    matchTokenNext(TokenType.L_BRACKET);
+                    matchTokenNext(TokenType.L_PARENTHESIS);
                     elseIf.setCondition(parseRelationalExpression());
-                    matchToken(TokenType.R_BRACKET);
+                    matchToken(TokenType.R_PARENTHESIS);
                     elseIf.left = parseStatementBlock(true);
                     node.addStatement(elseIf);
-                }
-                else {
+                } else {
                     node.right = parseStatementBlock(false);
                     break;
                 }
-            }
-            else {
+            } else {
                 break;
             }
         }
@@ -260,106 +267,133 @@ public class GramParser {
         return node;
     }
 
+    /**
+     * 解析while语句
+     */
     private TreeNode parseWhileStatement() throws Exception {
         TreeNode node = new TreeNode();
         node.setType(TreeNodeType.WHILE);
-        matchTokenNext(TokenType.L_BRACKET);
+        matchTokenNext(TokenType.L_PARENTHESIS);
         node.setCondition(parseRelationalExpression());
-        matchToken(TokenType.R_BRACKET);
+        matchToken(TokenType.R_PARENTHESIS);
         node.left = parseStatementBlock(true);
 
         return node;
     }
 
-    private TreeNode parseArithmeticExpression() throws LexException {
+    /**
+     * 解析算术表达式
+     */
+    private TreeNode parseArithmeticExpression() throws Exception {
         List<Token> tokens = getAllExpressionTokens();
         return parseArithmeticExpression(tokens);
     }
 
-    private TreeNode parseArithmeticExpression(List<Token> tokens) {
-        Stack<TreeNode> operandStack = new Stack<>();//操作数栈
-        Stack<TreeNode> operatorStack = new Stack<>();//操作符栈
-        Stack<Character> brackets = new Stack<>();//括号栈
+    /**
+     * 根据token列表解析算术表达式
+     * 不是做运算，只解析成对应的树
+     * @param tokens 对应的token列表
+     */
+    private TreeNode parseArithmeticExpression(List<Token> tokens) throws GramException{
+        // 操作数栈
+        Stack<TreeNode> operandStack = new Stack<>();
+        // 操作符栈
+        Stack<TreeNode> operatorStack = new Stack<>();
+        // 括号栈
+        Stack<Character> brackets = new Stack<>();
+        // token指针
         ListIterator<Token> iterator = tokens.listIterator();
 
         while (true){
             if(iterator.hasNext()) {
                 Token token = iterator.next();
                 if (checkTokenOperand(token)) {
+                    // token是操作数
                     if (iterator.hasNext()) {
-                        if (iterator.next().getType() != TokenType.L_SQUARE_BRACKET) {
+                        if (iterator.next().getType() != TokenType.L_BRACKET) {
                             operandStack.push(tokenToTreeNode(token));
                             iterator.previous();
                         } else {
                             int start = iterator.previousIndex();
                             int end;
                             brackets.push('[');
-                            Token aim = null;
+                            Token aim;
                             while (!brackets.empty()) {
                                 aim = iterator.next();
-                                if (aim.getType() == TokenType.L_SQUARE_BRACKET) {
+                                if (aim.getType() == TokenType.L_BRACKET) {
                                     brackets.push('[');
-                                } else if (aim.getType() == TokenType.R_SQUARE_BRACKET) {
+                                } else if (aim.getType() == TokenType.R_BRACKET) {
                                     brackets.pop();
                                 }
                             }
                             end = iterator.nextIndex();
-
                             operandStack.push(parseArrayAccess(tokens.subList(start-1, end)));
                         }
-                    }
-                    else {
+                    } else {
+                        // 当前是最后一个token
+                        // 直接入栈
                         operandStack.push(tokenToTreeNode(token));
                     }
                 } else if (checkTokenArithmeticOperator(token)) {
+                    // token是运算符
                     if (operatorStack.empty()) {
                         operatorStack.push(tokenToTreeNode(token));
                     } else {
-                        TreeNode currentOperator = tokenToTreeNode(token);
-                        TreeNode previousOperator = operatorStack.peek();
-                        if (priorityCompare(previousOperator, currentOperator)) {
-                            Token next = iterator.next();
-                            TreeNode currentOperand;
-                            if (!checkTokenBracket(next)) {//如果下一个token不是左括号
-                                currentOperand = tokenToTreeNode(next);
-                            } else {//如果下一个token是左括号
-                                //从后往前遍历找右括号
-                                currentOperand = sliceExpressionInBrackets(iterator,tokens);
-                            }
-                            TreeNode previousOperand = operandStack.pop();
-                            currentOperator.right = currentOperand;
-                            currentOperator.left = previousOperand;
-                            operandStack.push(currentOperator);
-                        } else {
+                        // 取得前一个操作符与当前操作符
+                        TreeNode preOperator = operatorStack.peek();
+                        TreeNode curOperator = tokenToTreeNode(token);
+                        try {
+                            if (priorityCompare(preOperator, curOperator)) {
+                                Token next = iterator.next();
+                                TreeNode currentOperand;
+                                if (!checkTokenBracket(next)) {
+                                    //如果下一个token不是左括号
+                                    currentOperand = tokenToTreeNode(next);
+                                } else {
+                                    // 如果下一个token是左括号
+                                    // 从后往前遍历找右括号
+                                    currentOperand = sliceExpressionInBrackets(iterator,tokens);
+                                }
+                                TreeNode previousOperand = operandStack.pop();
+                                curOperator.right = currentOperand;
+                                curOperator.left = previousOperand;
+                                operandStack.push(curOperator);
+                            } else {
 
-                            TreeNode operand1 = operandStack.pop();
-                            TreeNode operand2 = operandStack.pop();
-                            previousOperator.left = operand1;
-                            previousOperator.right = operand2;
-                            operandStack.push(previousOperator);
-                            operatorStack.push(currentOperator);
+                                TreeNode operand1 = operandStack.pop();
+                                TreeNode operand2 = operandStack.pop();
+                                preOperator.left = operand1;
+                                preOperator.right = operand2;
+                                operandStack.push(preOperator);
+                                operatorStack.push(curOperator);
+                            }
+                        } catch (GramException e) {
+                            throw new GramException("Invalid relational operator at line " + curToken.getLineNum());
                         }
+
                     }
-                }
-                else if(token.getType() == TokenType.L_BRACKET) {
+                } else if(token.getType() == TokenType.L_PARENTHESIS) {
+                    // token是左括号
                     TreeNode operand = sliceExpressionInBrackets(iterator,tokens);
                     operandStack.push(operand);
+                } else {
+                    throw new GramException("Invalid arithmetic expression at line " + token.getLineNum());
                 }
-                else {
-                    throw new RuntimeException("unexpected token!");
-                }
-            }
-
-            else  {//如果没有需要处理的token
-                if(operandStack.size()>1) {
+            } else  {
+                // token处理完毕
+                if(operandStack.size() > 1) {
+                    // 当操作数栈中数量大于1时
+                    //
                     TreeNode operand1 = operandStack.pop();
                     TreeNode operand2 = operandStack.pop();
                     TreeNode operator = operatorStack.pop();
                     operator.left = operand1;
                     operator.right = operand2;
+                    // ？？
                     operandStack.push(operator);
-                }
-                else {
+                } else {
+                    // 栈中只剩一个结点
+                    // 结束循环
                     break;
                 }
             }
@@ -373,14 +407,16 @@ public class GramParser {
      * 获取表达式所有词法单元
      * @return token序列
      */
-    private List<Token> getAllExpressionTokens() throws LexException {
+    private List<Token> getAllExpressionTokens() throws LexException, GramException {
         List<Token> tokens = new ArrayList<>();
-        Stack<Character> s = new Stack<>();//小括号栈
-        Stack<Character> s2 = new Stack<>();//中括号栈
+        // 小括号栈
+        Stack<Character> s = new Stack<>();
+        // 中括号栈
+        Stack<Character> s2 = new Stack<>();
         loop:
         while (true) {
             getNextToken();
-            switch (current.getType()) {
+            switch (curToken.getType()) {
                 case IDENTIFIER:
                 case PLUS:
                 case MINUS:
@@ -388,42 +424,41 @@ public class GramParser {
                 case DIVIDE:
                 case INT_LITERAL:
                 case REAL_LITERAL:
-                    tokens.add(current);
+                    tokens.add(curToken);
                     break;
-                case L_BRACKET:
-                    tokens.add(current);
+                case L_PARENTHESIS:
+                    tokens.add(curToken);
                     s.push('(');
                     break;
-                case R_BRACKET:
-                    if(s.empty()) {//如果栈为空遇到右括号，则表达式结束
+                case R_PARENTHESIS:
+                    if(s.empty()) {
+                        // 如果栈为空遇到右括号，则表达式结束
                         break loop;
-                    }
-                    else if(s.peek() == '(') {
+                    } else if(s.peek() == '(') {
+                        // 弹出左括号
                         s.pop();
-                        tokens.add(current);
-                    }
-                    else {
-                        throw new RuntimeException("unexpected token!");
+                        tokens.add(curToken);
+                    } else {
+                        throw new GramException("Unexpected token at line " + curToken.getLineNum());
                     }
                     break;
-                case L_SQUARE_BRACKET:
-                    tokens.add(current);
+                case L_BRACKET:
+                    tokens.add(curToken);
                     s2.push('[');
                     break;
-                case R_SQUARE_BRACKET:
-                    if(s2.empty()) {//如果栈为空遇到右括号，则表达式结束
+                case R_BRACKET:
+                    if(s2.empty()) {
+                        // 如果栈为空遇到右括号，则表达式结束
                         break loop;
-                    }
-                    else if(s2.peek() == '[') {
+                    } else if(s2.peek() == '[') {
                         s2.pop();
-                        tokens.add(current);
-                    }
-                    else {
-                        throw new RuntimeException("unexpected token!");
+                        tokens.add(curToken);
+                    } else {
+                        throw new GramException("Unexpected token at line " + curToken.getLineNum());
                     }
                     break;
                 default:
-                    //如果遇到上述token以外的其它token，表达式结束
+                    // 遇到其它token，表达式结束
                     break loop;
             }
         }
@@ -431,67 +466,73 @@ public class GramParser {
         return tokens;
     }
 
-    private TreeNode parseRelationalExpression() throws LexException {
+    /**
+     * 解析关系表达式
+     */
+    private TreeNode parseRelationalExpression() throws Exception {
+        // 左右结点均为算术表达式
+        // 中间是关系运算符
         TreeNode node = new TreeNode();
         node.left = parseArithmeticExpression();
-        if(checkTokenRelationalOperator()) {
-            switch (current.getType()) {
-                case LESS:
-                    node.setType(TreeNodeType.LESS);
-                    break;
-                case EQUAL:
-                    node.setType(TreeNodeType.EQUAL);
-                    break;
-                case NOT_EQUAL:
-                    node.setType(TreeNodeType.NOT_EQUAL);
-                    break;
-            }
-        }
-        else {
-            throw new RuntimeException("unexpected token!");
+        switch (curToken.getType()) {
+            case LESS:
+                node.setType(TreeNodeType.LESS);
+                break;
+            case EQUAL:
+                node.setType(TreeNodeType.EQUAL);
+                break;
+            case NOT_EQUAL:
+                node.setType(TreeNodeType.NOT_EQUAL);
+                break;
+            default:
+                throw new GramException("Invalid relational operator at line " + curToken.getLineNum());
         }
         node.right = parseArithmeticExpression();
 
         return node;
     }
 
-
-
-    private void matchTokenNext (TokenType type) throws Exception {
+    /**
+     * 用预期类型匹配下一个token
+     */
+    private void matchTokenNext (TokenType type) throws GramException, LexException {
         getNextToken();
         matchToken(type);
     }
 
-    private void matchToken(TokenType type) throws Exception {
-        if (current.getType() == TokenType.UNKNOWN) {
+    /**
+     * 用预期类型匹配当前token
+     */
+    private void matchToken(TokenType type) throws GramException {
+        if(curToken.getType() != type) {
             String err = String.format("Expected %s, found %s at line %d",
-                    type, current.getType(), current.getLineNum());
-            throw new LexException(err);
-        }
-        if(current.getType() != type) {
-            String err = String.format("Expected %s, found %s at line %d",
-                    type, current.getType(), current.getLineNum());
+                    type, curToken.getType(), curToken.getLineNum());
             throw new GramException(err);
         }
     }
 
+    /**
+     * 检查下一个token是否为预期类型
+     * @param type 预期类型
+     */
     private boolean checkTokenNext (TokenType type) throws LexException {
         getNextToken();
-        return current.getType() == type;
+        return curToken.getType() == type;
     }
 
+    /**
+     * 检查当前token是否为预期类型
+     * @param type 预期类型
+     */
     private boolean checkToken(TokenType type) {
-        return current.getType() == type;
+        return curToken.getType() == type;
     }
 
 
-    private boolean checkTokenRelationalOperator() {
-        TokenType type = current.getType();
-        return type == TokenType.LESS||
-                type == TokenType.EQUAL||
-                type == TokenType.NOT_EQUAL;
-    }
-
+    /**
+     * 检查词法单元是否为算算术运算符
+     * @param token 待检查词法单元
+     */
     private boolean checkTokenArithmeticOperator(Token token) {
         TokenType type = token.getType();
         return type == TokenType.PLUS||
@@ -500,6 +541,11 @@ public class GramParser {
                 type == TokenType.DIVIDE;
     }
 
+    /**
+     * 将词法单元转换为语法树的结点
+     * @param token 词法单元
+     * @return 语法树结点
+     */
     private TreeNode tokenToTreeNode(Token token) {
         TreeNode node = new TreeNode();
         switch (token.getType()) {
@@ -531,20 +577,39 @@ public class GramParser {
         return node;
     }
 
-    private boolean priorityCompare(TreeNode operator1,TreeNode operator2) {//比较运算符优先级
-        return getPriority(operator1)<getPriority(operator2);
+
+    /**
+     * 比较两个运算符优先级
+     * @param operator1 运算符1
+     * @param operator2 运算符2
+     * @return 运算符2的优先级是否更高
+     */
+    private boolean priorityCompare(TreeNode operator1, TreeNode operator2) throws GramException {
+        return getPriority(operator2) > getPriority(operator1);
     }
 
-    private int getPriority(TreeNode operator) {//获得运算符优先级
-        if(operator.getType() == TreeNodeType.PLUS||operator.getType() == TreeNodeType.MINUS) {
-            return 1;
+    /**
+     * 获取运算符优先级
+     * 数值越大，优先级越高
+     * @param operator 运算符
+     */
+    private int getPriority(TreeNode operator) throws GramException {
+        switch (operator.getType()) {
+            case PLUS:
+            case MINUS:
+                return 0;
+            case MULTIPLY:
+            case DIVIDE:
+                return 1;
+            default:
+                throw new GramException("Invalid arithmetic operator!");
         }
-        else if(operator.getType() == TreeNodeType.MULTIPLY||operator.getType() == TreeNodeType.DIVIDE) {
-            return 2;
-        }
-        throw new RuntimeException("unexpected operator!");
     }
 
+    /**
+     * 检查词法单元是否为合法的操作数
+     * @param token 待检查词法单元
+     */
     private boolean checkTokenOperand(Token token) {
         TokenType type = token.getType();
         return type == TokenType.IDENTIFIER
@@ -552,16 +617,19 @@ public class GramParser {
                 ||type == TokenType.REAL_LITERAL;
     }
 
+    /**
+     * 检查词法单元是否为左括号
+     * @param token 待检查词法单元
+     */
     private boolean checkTokenBracket(Token token) {
-        return token.getType() == TokenType.L_BRACKET;
+        return token.getType() == TokenType.L_PARENTHESIS;
     }
 
 
-    public List<TreeNode> getTreeNodes() {
-        return treeNodes;
-    }
-
-    private TreeNode parseArrayAccess(List<Token> tokens) {
+    /**
+     * 解析数组
+     */
+    private TreeNode parseArrayAccess(List<Token> tokens) throws GramException {
         TreeNode node = new TreeNode();
         node.setType(TreeNodeType.ARRAY_ACCESS);
         TreeNode left = new TreeNode();
@@ -569,31 +637,58 @@ public class GramParser {
         left.setSymbolName(tokens.get(0).getStringValue());
         node.left = left;
         if(tokens.size() == 4) {
+            // 如果大小为4的话
+            // 说明是最基础的一维数组+索引
+            // 比如A[1]
             Token right = tokens.get(2);
+            // 索引位设为右节点
             node.right = tokenToTreeNode(right);
-        }else {
+        } else {
+            // 可能是算术表达式
+            // 或多维数组
             node.right = parseArithmeticExpression(tokens.subList(2, tokens.size() - 1));
         }
 
         return node;
     }
 
-    private TreeNode sliceExpressionInBrackets(ListIterator<Token> iterator,List<Token> tokens) {
+
+    private TreeNode sliceExpressionInBrackets(ListIterator<Token> iterator,
+                                               List<Token> tokens) throws GramException {
         Stack<Character> brackets = new Stack<>();
         int start = iterator.previousIndex();
         int end;
         brackets.push('(');
-        Token aim = null;
+        Token aim;
         while (!brackets.empty()) {
             aim = iterator.next();
-            if (aim.getType() == TokenType.L_BRACKET) {
+            if (aim.getType() == TokenType.L_PARENTHESIS) {
                 brackets.push('(');
-            } else if (aim.getType() == TokenType.R_BRACKET) {
+            } else if (aim.getType() == TokenType.R_PARENTHESIS) {
                 brackets.pop();
             }
         }
         end = iterator.nextIndex();
         return parseArithmeticExpression(tokens.subList(start + 1, end - 1));
+    }
+
+
+
+    public List<TreeNode> getTreeNodes() {
+        return treeNodes;
+    }
+
+    /**
+     * 所有语法树的格式化字符串表示
+     */
+    private String treesToString() {
+        StringBuilder stringBuilder = new StringBuilder();
+        for(int i=0; i<treeNodes.size(); i++) {
+            stringBuilder.append("语法树").append(i).append(":\n");
+
+            stringBuilder.append("---------------------\n");
+        }
+        return stringBuilder.toString();
     }
 
 }

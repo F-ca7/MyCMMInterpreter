@@ -4,8 +4,8 @@ import java.util.LinkedList;
 import java.util.List;
 
 /**
- * @author FANG
  * @description 语法树结点
+ * @author FANG
  * @date 2019/10/22 19:50
  **/
 public class TreeNode {
@@ -24,7 +24,7 @@ public class TreeNode {
     private LinkedList<TreeNode> statementBlock = new LinkedList<>();
     // bool条件表达式
     private TreeNode condition;
-    // treenode的类型
+    // 结点类型
     private TreeNodeType type;
 
     public String getSymbolName () {
