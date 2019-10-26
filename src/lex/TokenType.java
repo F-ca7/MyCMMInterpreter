@@ -1,8 +1,8 @@
 package lex;
 
 /**
- * @author FANG
  * @description Token类型枚举类
+ * @author FANG
  * @date 2019/10/22 15:35
  **/
 public enum TokenType {
@@ -31,12 +31,14 @@ public enum TokenType {
 
     // 分隔符
     SEMICOLON,          // ;
-    L_BRACKET,          // (
-    R_BRACKET,          // )
-    L_ANGLE_BRACKET,    // {
-    R_ANGLE_BRACKET,    // }
-    L_SQUARE_BRACKET,   // [
-    R_SQUARE_BRACKET,   // ]
+
+    // 括号
+    L_PARENTHESIS,      // (
+    R_PARENTHESIS,      // )
+    L_BRACKET,          // [
+    R_BRACKET,          // ]
+    L_BRACE,            // {
+    R_BRACE,            // }
 
     // 字面量
     INT_LITERAL,    // 整形

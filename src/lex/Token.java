@@ -1,8 +1,8 @@
 package lex;
 
 /**
+ * @description Token词法单元
  * @author FANG
- * @description Token
  * @date 2019/10/22 15:34
  **/
 public class Token {
@@ -55,5 +55,32 @@ public class Token {
 
     public void setLineNum(int lineNum) {
         this.lineNum = lineNum;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append("Token{type=").append(type);
+        switch (type) {
+            case INT_LITERAL:
+                stringBuilder.append(", intValue=").append(intValue);
+                break;
+            case REAL_LITERAL:
+                stringBuilder.append(", realValue=").append(realValue);
+                break;
+            case IDENTIFIER:
+                stringBuilder.append(", stringValue='").append(stringValue).append('\'');
+                break;
+        }
+        stringBuilder.append(", lineNum=").append(lineNum);
+        stringBuilder.append('}');
+        return stringBuilder.toString();
+//        return "Token{" +
+//                "type=" + type +
+//                ", stringValue='" + stringValue + '\'' +
+//                ", intValue=" + intValue +
+//                ", realValue=" + realValue +
+//                ", lineNum=" + lineNum +
+//                '}';
     }
 }
