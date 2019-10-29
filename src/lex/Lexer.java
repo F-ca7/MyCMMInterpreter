@@ -32,7 +32,7 @@ public class Lexer {
     // 源文件路径
     private String srcFilePath;
     // 源代码
-    private String sourceCode;
+    private String srcCode;
 
     // 指向正在读取字符的位置的指针
     private int pointer = 0;
@@ -53,8 +53,7 @@ public class Lexer {
         RESERVED_WORDS.put("else", TokenType.ELSE.ordinal());
         RESERVED_WORDS.put("while", TokenType.WHILE.ordinal());
         RESERVED_WORDS.put("for", TokenType.FOR.ordinal());
-        RESERVED_WORDS.put("read", TokenType.READ.ordinal());
-        RESERVED_WORDS.put("write", TokenType.WRITE.ordinal());
+        RESERVED_WORDS.put("print", TokenType.PRINT.ordinal());
         RESERVED_WORDS.put("int", TokenType.INT.ordinal());
         RESERVED_WORDS.put("real", TokenType.REAL.ordinal());
     }
@@ -100,7 +99,7 @@ public class Lexer {
                 builder.append('\n');
             }
             // 把源代码当做字符串直接保存
-            sourceCode = builder.toString();
+            srcCode = builder.toString();
             bufferedReader.close();
         }
         catch (IOException e) {
@@ -109,9 +108,6 @@ public class Lexer {
         }
     }
 
-    public void setSourceCode(String sourceCode) {
-        this.sourceCode = sourceCode;
-    }
 
     /**
      * 返回下一个token
@@ -260,7 +256,7 @@ public class Lexer {
             }
         } else if(curCh == '/') {
             // 单行行注释, 直接读到行尾
-            readLineEnd();
+            readToLineEnd();
             token.setType(TokenType.SINGLE_LINE_COMMENT);
         } else {
             // 除号
@@ -275,8 +271,8 @@ public class Lexer {
      */
     private void readCharSkip () {
         do {
-            if (pointer < sourceCode.length()) {
-                curCh = sourceCode.charAt(pointer);
+            if (pointer < srcCode.length()) {
+                curCh = srcCode.charAt(pointer);
                 // 字符指针后移
                 pointer++;
                 if(curCh == '\n') {
@@ -290,19 +286,27 @@ public class Lexer {
         }while (curCh == '\n'|| curCh == '\r'|| curCh == '\t'|| curCh ==' ');
     }
 
-    private void readLineEnd() {
-        while (sourceCode.charAt(pointer)!='\n') {
+    /**
+     * 一直读取到行尾
+     */
+    private void readToLineEnd() {
+        while (srcCode.charAt(pointer)!='\n') {
             pointer++;
         }
     }
 
     private void readChar() {
-        if (pointer < sourceCode.length()) {
-            curCh = sourceCode.charAt(pointer);
+        if (pointer < srcCode.length()) {
+            curCh = srcCode.charAt(pointer);
             pointer++;
         } else {
             curCh = END_OF_TEXT;
         }
+    }
+
+
+    public void setSrcCode(String srcCode) {
+        this.srcCode = srcCode;
     }
 
 }

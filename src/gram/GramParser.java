@@ -86,11 +86,8 @@ public class GramParser {
                 case IDENTIFIER:
                     node = parseAssignStatement();
                     break;
-                case READ:
-                    node = parseReadOrWriteStatement(TokenType.READ);
-                    break;
-                case WRITE:
-                    node = parseReadOrWriteStatement(TokenType.WRITE);
+                case PRINT:
+                    node = parsePrintStatement();
                     break;
                 case IF:
                     node = parseIfStatement();
@@ -214,14 +211,12 @@ public class GramParser {
         return node;
     }
 
-    private TreeNode parseReadOrWriteStatement(TokenType type) throws Exception {
+    /**
+     * 解析输出语句
+     */
+    private TreeNode parsePrintStatement() throws Exception {
         TreeNode node = new TreeNode();
-        switch (type) {
-            case READ:
-                node.setType(TreeNodeType.READ);
-            case WRITE:
-                node.setType(TreeNodeType.WRITE);
-        }
+        node.setType(TreeNodeType.PRINT);
         TreeNode left = new TreeNode();
         left.setType(TreeNodeType.IDENTIFIER);
         matchTokenNext(TokenType.IDENTIFIER);

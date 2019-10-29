@@ -6,46 +6,77 @@ package gram;
  * @date 2019/10/23 16:43
  **/
 public enum TreeNodeType {
+    /**
+     * 若变量声明同时赋值则
+     * left存储变量名, right存储赋值表达式
+     */
+    // 整型变量声明
+    INT_DECLARATION,
+    // 实数变量声明,同上
+    REAL_DECLARATION,
 
-    INT_DECLARATION,//整型变量声明,left存储变量名，right(如果有的话)存储赋值表达式
-    REAL_DECLARATION,//实数变量声明,同上
+    /**
+     * left存储数组标识符, right存储数组大小
+     */
+    // 整型数组声明,
+    INT_ARRAY_DECLARATION,
+    // 实数数组声明
+    REAL_ARRAY_DECLARATION,
 
-    INT_ARRAY_DECLARATION,//整型数组声明,left存储数组标识符，right存储数组大小
-    REAL_ARRAY_DECLARATION,//实数数组声明，同上
+    /**
+     * 访问数组, left存储数组标识符, right存储索引
+     */
+    ARRAY_ACCESS,
 
-    ARRAY_ACCESS,//数组访问，left存储数组标识符，right存储索引
+    /**
+     * 变量赋值, left存储变量名, right存储赋值表达式
+     */
+    ASSIGN,
+    /**
+     * 命令行输出，
+     */
+    PRINT,
 
-    ASSIGN,//变量赋值,left变量名,right赋值表达式
-    READ,//read语句,left变量名
-    WRITE,//write语句
+    /**
+     * 算数运算, left存储第一个操作数, right存储第二个操作数
+     */
+    PLUS,
+    MINUS,
+    MULTIPLY,
+    DIVIDE,
 
-    PLUS,//加法运算,left第一个操作数，right第二个操作数
-    MINUS,//减法运算
-    MULTIPLY,//乘法运算
-    DIVIDE,//除法运算
+    /**
+     * 关系运算, left存储第一个操作数, right存储第二个操作数
+     */
+    LESS,
+    EQUAL,
+    NOT_EQUAL,
 
-    LESS,//小于关系,left第一个操作数，right第二个操作数
-    EQUAL,//等于关系
-    NOT_EQUAL,//不等关系
-
-    /*
-     *if条件为真的语句块存储在left
-     * 如果有else语句块，存储在right
-     * 所有的else if存储在statementBlock里面
+    /**
+     * left存储条件为真的语句块
+     * 如果有else语句块, 存储在right
+     * 所有的else if存储在statementBlock里
      */
     IF,
-    ELSE,//else语句
+    ELSE,
     ELSE_IF,
-    /*
-     *while语句块存储在left
+
+
+    /**
+     * left存储while语句块
      */
-    WHILE,//while语句
+    WHILE,
+    /**
+     * 块内容存储在statementBlock里
+     */
+    STATEMENT_BLOCK,
 
-    STATEMENT_BLOCK,//语句块，块内容存储在statementBlock域
-
-    INT_LITERAL,    //整型字面量
-    REAL_LITERAL,   //实数字面量
-    IDENTIFIER,     //标识符
+    // 整型字面量
+    INT_LITERAL,
+    // 实数字面量
+    REAL_LITERAL,
+    //标识符
+    IDENTIFIER,
 
     NULL,
 }
