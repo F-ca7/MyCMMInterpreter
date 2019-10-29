@@ -57,11 +57,11 @@ public class Lexer {
         RESERVED_WORDS.put("print", TokenType.PRINT.ordinal());
         RESERVED_WORDS.put("int", TokenType.INT.ordinal());
         RESERVED_WORDS.put("real", TokenType.REAL.ordinal());
-        RESERVED_WORDS.put("char", TokenType.REAL.ordinal());
+        RESERVED_WORDS.put("char", TokenType.CHAR.ordinal());
     }
 
     public static void main(String[] args) {
-        Lexer lexer = new Lexer("E:\\desktop\\MyCMMInterpreter\\test_lex_2.cmm");
+        Lexer lexer = new Lexer("E:\\desktop\\MyCMMInterpreter\\test_lex_3.cmm");
         lexer.loadSourceCode();
         Token token;
         try {
@@ -140,16 +140,38 @@ public class Lexer {
                 pointer--;
             }
         } else if(curCh == '<') {
-            // 判断小于还是不等于
+            // 判断小于还是小于等于还是不等于
             readChar();
             if(curCh =='>') {
                 token.setType(TokenType.NOT_EQUAL);
+            } else if(curCh =='=') {
+                token.setType(TokenType.LESS_EQ);
             } else {
                 token.setType(TokenType.LESS);
                 pointer--;
             }
         } else if(curCh == ';') {
             token.setType(TokenType.SEMICOLON);
+        } else if(curCh == '>') {
+            // 判断大于还是大于等于
+            readChar();
+            if (curCh == '=') {
+                token.setType(TokenType.GREATER_EQ);
+            } else {
+                token.setType(TokenType.GREATER);
+                pointer--;
+            }
+
+        } else if (curCh=='\'') {
+            // 单引号中间只能包含一个字符
+            readChar();
+            // 将其视为整形常量
+            token.setType(TokenType.INT_LITERAL);
+            token.setIntValue(curCh);
+            readChar();
+            if (curCh!='\'') {
+                throw new LexException("Illegal character at line "+token.getLineNum());
+            }
         } else {
             if(Character.isDigit(curCh) || curCh=='.') {
                 // 数字常量

@@ -25,12 +25,16 @@ public enum TokenType {
 
     // 关系运算符
     LESS,       // <
+    LESS_EQ,       // <=
+    GREATER,    // >
+    GREATER_EQ,    // >=
     EQUAL,      // ==
     NOT_EQUAL,  // <>
 
 
     // 分隔符
     SEMICOLON,          // ;
+    SINGLE_QUOTE,          // '
 
     // 括号
     L_PARENTHESIS,      // (
