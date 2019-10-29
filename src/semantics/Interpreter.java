@@ -251,18 +251,20 @@ public class Interpreter {
                 }
                 break;
             case CodeConstant.DIV:
+                // 注意是第一操作数是除数
+                // 第二操作数是被除数
                 if (isFirstOperandInt && isSecondOperandInt) {
                     if((int)operand2 == 0) {
                         throw new ExecutionException("Cannot divide by zero!");
                     }
-                    symbol.setIntValue((int) operand1 / (int) operand2);
+                    symbol.setIntValue((int) operand2 / (int) operand1);
                     symbol.setType(SymValueType.INT);
                 } else {
                     // 浮点数精度小数点后10位
                     if(Math.abs(operand2) < 1e-10) {
                         throw new ExecutionException("Cannot divide by zero!");
                     }
-                    symbol.setRealValue(operand1 / operand2);
+                    symbol.setRealValue(operand2 / operand1);
                     symbol.setType(SymValueType.REAL);
                 }
                 break;

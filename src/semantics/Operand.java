@@ -5,5 +5,7 @@ package semantics;
  * @author FANG
  * @date 2019/10/28 9:37
  **/
-public class Operand {
+class Operand {
+
+    String name;
 }

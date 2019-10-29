@@ -7,9 +7,9 @@ package semantics;
  * @date 2019/10/26 18:47
  **/
 public class Quadruple {
-
     // 操作类型
     String operation;
+
     // 第一个操作数类型
     OperandType firstOperandType = OperandType.NULL;
     // 第二个操作数类型

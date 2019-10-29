@@ -8,6 +8,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.IntToDoubleFunction;
 
 /**
  * @description 词法分析器
@@ -56,10 +57,11 @@ public class Lexer {
         RESERVED_WORDS.put("print", TokenType.PRINT.ordinal());
         RESERVED_WORDS.put("int", TokenType.INT.ordinal());
         RESERVED_WORDS.put("real", TokenType.REAL.ordinal());
+        RESERVED_WORDS.put("char", TokenType.REAL.ordinal());
     }
 
     public static void main(String[] args) {
-        Lexer lexer = new Lexer("E:\\desktop\\MyCMMInterpreter\\test_lex_err4.cmm");
+        Lexer lexer = new Lexer("E:\\desktop\\MyCMMInterpreter\\test_lex_2.cmm");
         lexer.loadSourceCode();
         Token token;
         try {
@@ -149,7 +151,7 @@ public class Lexer {
         } else if(curCh == ';') {
             token.setType(TokenType.SEMICOLON);
         } else {
-            if(Character.isDigit(curCh)) {
+            if(Character.isDigit(curCh) || curCh=='.') {
                 // 数字常量
                 parseNum(token);
             } else if(Character.isLetter(curCh)) {
@@ -200,25 +202,58 @@ public class Lexer {
      * @param token 待解析类型的token
      */
     private void parseNum(Token token) throws LexException {
-        boolean isReal = false;
+        boolean isReal = false; // 实数
+        boolean isHex = false;  // 16进制
+        boolean isExp = false;  // 指数形式
         while (true) {
-            if((curCh >='0'&& curCh <='9')|| curCh =='.') {
+            if(Character.isDigit(curCh) || curCh =='.') {
                 stringBuilder.append(curCh);
                 if (curCh == '.') {
-                    // 注意此处判断反复出现小数点
-                    if (isReal) {
-                        throw new LexException("Illegal number literal at line "+ token.getLineNum());
+                    if (isReal || isHex) {
+                        // 反复出现小数点
+                        // 或已经是十六进制
+                        // 或已经是指数形式
+                        illegalNumException(token);
                     } else {
                         // 有小数点说明是实数
                         isReal = true;
+                        readChar();
+                        if (!Character.isDigit(curCh)) {
+                            // 小数点后不是数字
+                            illegalNumException(token);
+                        }
+                        // 回退指针
+                        pointer--;
                     }
                 }
                 readChar();
             } else if(Character.isLetter(curCh)) {
-                // 数字后面不能跟字母作为标识符
-                throw new LexException("IDENTIFIER cannot start with digit at line " + token.getLineNum());
-            }
-            else {
+                if (!isHex && stringBuilder.toString().equals("0") && curCh=='x') {
+                    // 是16进制表示
+                    isHex = true;
+                    // 清除 0x前缀
+                    stringBuilder.delete(0, stringBuilder.length());
+                    readChar();
+                } else if(!isExp && !isHex && !isReal && curCh=='e') {
+                    isExp = true;
+                    isReal = true;
+                    stringBuilder.append(curCh);
+                    readChar();
+                    if(curCh!='+' && curCh!='-') {
+                        illegalIdException(token);
+                    } else {
+                        stringBuilder.append(curCh);
+                    }
+                    readChar();
+                } else {
+                    // 数字后面不能跟字母作为标识符
+                    illegalIdException(token);
+                }
+
+            } else if(curCh=='_'){
+                // 忽略下划线
+                readChar();
+            } else {
                 pointer--;
                 break;
             }
@@ -229,10 +264,18 @@ public class Lexer {
         // 再转为对应数值
         if(isReal) {
             token.setType(TokenType.REAL_LITERAL);
-            token.setRealValue(Double.parseDouble(strVal));
+            if(isExp) {
+                token.setRealValue(expStrToInt(strVal));
+            }else {
+                token.setRealValue(Double.parseDouble(strVal));
+            }
         } else {
             token.setType(TokenType.INT_LITERAL);
-            token.setIntValue(Integer.parseInt(strVal));
+            if (isHex) {
+                token.setIntValue(Integer.parseInt(strVal, 16));
+            } else {
+                token.setIntValue(Integer.parseInt(strVal));
+            }
         }
     }
 
@@ -302,6 +345,29 @@ public class Lexer {
         } else {
             curCh = END_OF_TEXT;
         }
+    }
+
+    /**
+     * 指数形式字符串转整数
+     */
+    private double expStrToInt(String str) {
+        String[] strArr = str.split("e");
+        int base = Integer.parseInt(strArr[0]);
+        int exp = Integer.parseInt(strArr[1]);
+        return (base*Math.pow(10, exp));
+    }
+
+    private void illegalNumException(Token token) throws LexException {
+        // 中途可能会换行，如注释
+        token.setLineNum(lineNum);
+        throw new LexException("Illegal number literal at line "+ token.getLineNum());
+    }
+
+
+    private void illegalIdException(Token token) throws LexException {
+        // 中途可能会换行，如注释
+        token.setLineNum(lineNum);
+        throw new LexException("IDENTIFIER cannot start with digit at line "+ token.getLineNum());
     }
 
 

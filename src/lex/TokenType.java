@@ -13,6 +13,7 @@ public enum TokenType {
     PRINT,
     INT,
     REAL,
+    CHAR,
     FOR,
 
     // 算术运算符

@@ -148,8 +148,7 @@ class InterGenerator {
         }
         if(node.getType() == TreeNodeType.INT_DECLARATION) {
             code.operation = CodeConstant.INT;
-        }
-        else if(node.getType() == TreeNodeType.REAL_DECLARATION) {
+        } else if(node.getType() == TreeNodeType.REAL_DECLARATION) {
             code.operation = CodeConstant.REAL;
         }
         code.dest = node.left.getSymbolName();

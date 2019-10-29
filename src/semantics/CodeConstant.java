@@ -32,7 +32,7 @@ class CodeConstant {
     static final String EQ = "==";
     static final String NEQ = "<>";
     // 数组访问
-    static final String ARR_ACC = "arr";
+    static final String ARR_ACC = "arr_acc";
 
     // 入口代码
     static final Quadruple inCode = new Quadruple(CodeConstant.IN);
