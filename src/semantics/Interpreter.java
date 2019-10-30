@@ -37,14 +37,12 @@ public class Interpreter {
 
 
     public static void main(String[] args) {
-        Lexer parser = new Lexer("E:\\desktop\\MyCMMInterpreter\\test.cmm");
-        parser.loadSourceCode();
-        GramParser grammaticalParser = new GramParser(parser);
+        Lexer lexer = new Lexer("E:\\desktop\\MyCMMInterpreter\\test.cmm");
+        lexer.loadSourceCode();
+        lexer.loadTokenList();
+        GramParser parser = new GramParser(lexer);
         try {
-            grammaticalParser.startParse();
-        } catch (LexException e) {
-            System.out.println("词法分析错误！" + e.getMessage());
-            return;
+            parser.startParse();
         } catch (GramException e) {
             System.out.println("语法分析错误！" + e.getMessage());
             return;
@@ -52,7 +50,7 @@ public class Interpreter {
             e.printStackTrace();
         }
 
-        InterGenerator generator = new InterGenerator(grammaticalParser);
+        InterGenerator generator = new InterGenerator(parser);
         try {
             generator.start();
         }catch (SemanticException e){

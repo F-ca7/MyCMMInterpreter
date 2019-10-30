@@ -24,6 +24,11 @@ class InterGenerator {
     // 临时变量序号
     // 保证中间变量名全局唯一
     private int tempSerialNum = 0;
+    // 循环层次
+    private int loopLevel = 0;
+    // 记录break的位置回填
+    private Stack<Integer> breakIndex = new Stack<>();
+
     InterGenerator(GramParser parser) {
         this.parser = parser;
     }
@@ -39,6 +44,9 @@ class InterGenerator {
     private void generate(List<TreeNode> nodes) throws SemanticException {
         // 对于每个语法树按顺序生成四元式表示
         for(TreeNode node:nodes) {
+            if (!breakIndex.empty()) {
+                throw new SemanticException("Unreachable statements after break!");
+            }
             switch (node.getType()) {
                 case INT_DECLARATION:
                 case REAL_DECLARATION:
@@ -63,10 +71,32 @@ class InterGenerator {
                 case STATEMENT_BLOCK:
                     genStatementBlock(node);
                     break;
+                case BREAK:
+                    if(loopLevel==0) {
+                        throw new SemanticException("Using break outside loop!");
+                    } else {
+                        genBreak();
+                    }
+                    break;
+                case EMPTY:
+                    break;
                 default:
                     throw new SemanticException("Unknown statement!");
             }
         }
+    }
+
+    /**
+     * 生成break的中间代码
+     */
+    private void genBreak() {
+        Quadruple code1 = new Quadruple();
+        // 要多加一次出语句块
+        codes.add(CodeConstant.outCode);
+        code1.operation = CodeConstant.JMP;
+        codes.add(code1);
+        // 具体跳出循环的位置等待回填
+        breakIndex.push(codes.size()-1);
     }
 
     /**
@@ -224,16 +254,29 @@ class InterGenerator {
             codes.add(CodeConstant.inCode);
             generate(node.right.getStatements());
             Quadruple code1 = new Quadruple();
-            codes.add(CodeConstant.outCode);
+            if (!breakIndex.empty()) {
+                // 如果最后一句是break
+                // 把out放在jmp前
+                codes.set(codes.size()-1, CodeConstant.outCode);
+                Quadruple codeBreak = new Quadruple();
+                codeBreak.operation = CodeConstant.JMP;
+                codes.add(codeBreak);
+                breakIndex.pop();
+                // 具体跳出循环的位置等待回填
+                breakIndex.push(codes.size()-1);
+            }else {
+                codes.add(CodeConstant.outCode);
+            }
             code1.operation = CodeConstant.JMP;
             codes.add(code1);
+            // 具体跳转位置等待回填
             ifBackPatch.push(codes.size()-1);
         }
         // 跳转位置为整个代码段的下一条
         int jumpLocation = codes.size();
         while (!ifBackPatch.empty()) {
-            int backFill = ifBackPatch.pop();
-            codes.get(backFill).jumpLocation = jumpLocation;
+            int backPatch = ifBackPatch.pop();
+            codes.get(backPatch).jumpLocation = jumpLocation;
         }
     }
 
@@ -241,8 +284,10 @@ class InterGenerator {
      * 生成while的中间代码
      */
     private void genWhile(TreeNode node) throws SemanticException {
+        // 进入循环
+        loopLevel++;
         String condition = genRelationalExp(node.getCondition());
-        // 通过回填技术，其索引入栈
+        // while的开头位置入栈
         backPatch.push(codes.size()-1);
         Quadruple code = new Quadruple();
         code.operation = CodeConstant.JMP_WITH_CONDITION;
@@ -254,10 +299,18 @@ class InterGenerator {
         codes.add(CodeConstant.outCode);
         Quadruple code1 = new Quadruple();
         code1.operation = CodeConstant.JMP;
+        // 跳到while的开头
         int jumpLocation = backPatch.pop();
         code1.jumpLocation = jumpLocation;
         codes.add(code1);
         codes.get(jumpLocation+1).jumpLocation = codes.size();
+        if (!breakIndex.empty()) {
+            // 回填break位置
+            int breakLocation = breakIndex.pop();
+            codes.get(breakLocation).jumpLocation = codes.size();
+        }
+        // 退出循环
+        loopLevel--;
     }
 
 
@@ -275,7 +328,20 @@ class InterGenerator {
         codes.add(CodeConstant.inCode);
         generate(node.left.getStatements());
         Quadruple code1 = new Quadruple();
-        codes.add(CodeConstant.outCode);
+        // codes.add(CodeConstant.outCode);
+        if (!breakIndex.empty()) {
+            // 如果最后一句是break
+            // 把out放在jmp前
+            codes.set(codes.size()-1, CodeConstant.outCode);
+            Quadruple codeBreak = new Quadruple();
+            codeBreak.operation = CodeConstant.JMP;
+            codes.add(codeBreak);
+            breakIndex.pop();
+            // 具体跳出循环的位置等待回填
+            breakIndex.push(codes.size()-1);
+        }else {
+            codes.add(CodeConstant.outCode);
+        }
         code1.operation = CodeConstant.JMP;
         codes.add(code1);
         innerBackFills.push(codes.size()-1);
