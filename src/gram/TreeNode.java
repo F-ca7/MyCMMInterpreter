@@ -2,6 +2,7 @@ package gram;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 
 /**
  * @description 语法树结点
@@ -73,5 +74,104 @@ public class TreeNode {
 
     public List<TreeNode> getStatements() {
         return statementBlock;
+    }
+
+
+    /**
+     * 层次遍历语法树的结果
+     */
+    public static String getLevelOrderString(TreeNode root) {
+        StringBuilder stringBuilder = new StringBuilder();
+        // 每一层的结果
+        StringBuilder levelResult = new StringBuilder();
+        // 辅助队列
+        Queue<TreeNode> queue= new LinkedList<>();
+        int nextLevel = 0;
+        // 这层还需要加入结果的结点个数
+        int toBeList = 1;
+        // 当前层
+        int curLevel= 0;
+        if (root!=null) {
+            queue.offer(root);
+        }else {
+            return "null";
+        }
+        while (!queue.isEmpty()) {
+            TreeNode node = queue.poll();
+            toBeList--;
+            levelResult.append(node.toStringBuilder(curLevel)).append("\n");
+            if (node.left != null) {
+                nextLevel++;
+                queue.offer(node.left);
+            }
+            if(node.right != null){
+                nextLevel++;
+                queue.offer(node.right);
+            }
+            if (toBeList == 0) {
+                curLevel++;
+                // 该层添加完毕，可附加到总结果中
+                stringBuilder.append(levelResult);
+                stringBuilder.append("\n");
+
+                levelResult.delete(0, levelResult.length());
+                toBeList = nextLevel;
+                nextLevel = 0;
+            }
+        }
+        return stringBuilder.toString();
+    }
+
+
+
+    private StringBuilder toStringBuilder(int level) {
+        StringBuilder stringBuilder = new StringBuilder();
+        appendTabs(stringBuilder, level);
+        stringBuilder.append("TreeNode{");
+        stringBuilder.append("type=").append(type);
+        switch (type) {
+            case IF:
+            case ELSE_IF:
+            case WHILE:
+                stringBuilder.append(", condition=").append(condition);
+                break;
+            case STATEMENT_BLOCK:
+                stringBuilder.append(", stmtBlock={").append("\n");
+                for (int i = 0; i<statementBlock.size(); i++){
+                    appendTabs(stringBuilder, level);
+                    stringBuilder.append(i+1).append(". ");
+                    stringBuilder.append(statementBlock.get(i));
+                    stringBuilder.append("\n");
+                }
+                appendTabs(stringBuilder, level);
+                stringBuilder.append("}\n");
+                appendTabs(stringBuilder, level);
+                stringBuilder.append("}");
+                return stringBuilder;
+            case INT_LITERAL:
+                stringBuilder.append(", value=").append(intValue);
+                break;
+            case REAL_LITERAL:
+                stringBuilder.append(", value=").append(realValue);
+                break;
+            case IDENTIFIER:
+                stringBuilder.append(", name=").append(symbolName);
+                break;
+            case FUNC_DECLARATION:
+                break;
+        }
+        stringBuilder.append("}");
+        return stringBuilder;
+    }
+
+    @Override
+    public String toString() {
+        return toStringBuilder(0).toString();
+    }
+
+    private static void appendTabs(StringBuilder stringBuilder, int count) {
+        for (int j=0; j<count; j++) {
+            stringBuilder.append("\t");
+        }
     }
 }

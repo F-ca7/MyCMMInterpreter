@@ -14,6 +14,8 @@ public enum TreeNodeType {
     INT_DECLARATION,
     // 实数变量声明,同上
     REAL_DECLARATION,
+    // 字符型变量声明,同上
+    CHAR_DECLARATION,
 
     /**
      * left存储数组标识符, right存储数组大小
@@ -51,6 +53,9 @@ public enum TreeNodeType {
     LESS,
     EQUAL,
     NOT_EQUAL,
+    GREATER,
+    LESS_EQ,
+    GREATER_EQ,
 
     /**
      * left存储条件为真的语句块
@@ -71,12 +76,21 @@ public enum TreeNodeType {
      */
     STATEMENT_BLOCK,
 
+    /**
+     * 控制
+     */
+    BREAK,
+    CONTINUE,
+
     // 整型字面量
     INT_LITERAL,
     // 实数字面量
     REAL_LITERAL,
     //标识符
     IDENTIFIER,
+
+    // 函数声明
+    FUNC_DECLARATION,
 
     NULL,
 }
