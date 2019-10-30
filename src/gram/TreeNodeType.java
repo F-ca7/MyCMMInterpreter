@@ -91,6 +91,7 @@ public enum TreeNodeType {
 
     // 函数声明
     FUNC_DECLARATION,
-
+    // 空语句
+    EMPTY,
     NULL,
 }
