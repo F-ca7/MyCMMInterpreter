@@ -2,11 +2,14 @@ package lex;
 
 import exception.LexException;
 
+import javax.xml.bind.PrintConversionEvent;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.IntToDoubleFunction;
 
@@ -18,6 +21,8 @@ import java.util.function.IntToDoubleFunction;
 public class Lexer {
     // 文件尾常量
     private static final char END_OF_TEXT = '\u0003';
+    // 变量名长度限制
+    private static final int VAR_NAME_LIMIT = 64;
     // 字面量构造缓冲区
     private StringBuilder stringBuilder = new StringBuilder();
     // 当前字符
@@ -34,7 +39,12 @@ public class Lexer {
     private String srcFilePath;
     // 源代码
     private String srcCode;
-
+    // 错误信息
+    private StringBuffer errInfoBuffer = new StringBuffer();
+    // 是否成功
+    private boolean ifSuccess = true;
+    // token流
+    public List<Token> tokenList = new ArrayList<>();
     // 指向正在读取字符的位置的指针
     private int pointer = 0;
     // 静态初始化保留字表
@@ -49,37 +59,47 @@ public class Lexer {
         DIRECT_RECOGNIZED.put('}', TokenType.R_BRACE.ordinal());
         DIRECT_RECOGNIZED.put('[', TokenType.L_BRACKET.ordinal());
         DIRECT_RECOGNIZED.put(']', TokenType.R_BRACKET.ordinal());
+        DIRECT_RECOGNIZED.put(',', TokenType.COMMA.ordinal());
 
         RESERVED_WORDS.put("if", TokenType.IF.ordinal());
         RESERVED_WORDS.put("else", TokenType.ELSE.ordinal());
         RESERVED_WORDS.put("while", TokenType.WHILE.ordinal());
         RESERVED_WORDS.put("for", TokenType.FOR.ordinal());
         RESERVED_WORDS.put("print", TokenType.PRINT.ordinal());
+        RESERVED_WORDS.put("scan", TokenType.SCAN.ordinal());
         RESERVED_WORDS.put("int", TokenType.INT.ordinal());
         RESERVED_WORDS.put("real", TokenType.REAL.ordinal());
         RESERVED_WORDS.put("char", TokenType.CHAR.ordinal());
+        RESERVED_WORDS.put("continue", TokenType.CONTINUE.ordinal());
+        RESERVED_WORDS.put("break", TokenType.BREAK.ordinal());
     }
 
     public static void main(String[] args) {
-        Lexer lexer = new Lexer("E:\\desktop\\MyCMMInterpreter\\test_lex_3.cmm");
+        Lexer lexer = new Lexer("Y:\\desktop\\MyCMMInterpreter\\test_gram_1.cmm");
         lexer.loadSourceCode();
-        Token token;
-        try {
-            do {
+        Token token = new Token();
+        do {
+            try {
                 token = lexer.getNextToken();
                 if (token.getType()==TokenType.SINGLE_LINE_COMMENT
                         ||token.getType()==TokenType.MULTIPLE_LINE_COMMENT){
                     continue;
                 }
                 System.out.println(token);
-            } while (token.getType() != TokenType.EOF);
-            System.out.println("词法分析成功");
-        } catch (LexException e){
-            System.out.println("词法分析错误！" + e.getMessage());
-        } catch (Exception e){
-            e.printStackTrace();
-        }
+            }catch (LexException e) {
+                lexer.errInfoBuffer.append("词法分析错误！").append(e.getMessage()).append('\n');
+                lexer.ifSuccess = false;
+            }
 
+        } while (token.getType() != TokenType.EOF);
+        System.out.println("词法分析结束");
+
+        if (!lexer.ifSuccess) {
+            // 报告错误
+            System.out.println(lexer.errInfoBuffer.toString());
+        }else {
+            System.out.println("无错误发生！");
+        }
 
     }
 
@@ -87,6 +107,35 @@ public class Lexer {
     public Lexer(String path) {
         this.srcFilePath = path;
     }
+
+    /**
+     * 进行词法分析获取token列表
+     */
+    public void loadTokenList() {
+        Token token = new Token();
+        do {
+            try {
+                token = getNextToken();
+                if (token.getType()==TokenType.SINGLE_LINE_COMMENT
+                        ||token.getType()==TokenType.MULTIPLE_LINE_COMMENT){
+                    continue;
+                }
+                tokenList.add(token);
+            }catch (LexException e) {
+                errInfoBuffer.append("词法分析错误！").append(e.getMessage()).append('\n');
+                ifSuccess = false;
+            }
+
+        } while (token.getType() != TokenType.EOF);
+        System.out.println("词法分析结束");
+        if (!ifSuccess) {
+            // 报告错误
+            System.out.println(errInfoBuffer.toString());
+        }else {
+            System.out.println("无词法错误发生！");
+        }
+    }
+
 
     /**
      * 加载源代码
@@ -162,21 +211,21 @@ public class Lexer {
                 pointer--;
             }
 
-        } else if (curCh=='\'') {
+        } else if (curCh == '\'') {
             // 单引号中间只能包含一个字符
             readChar();
             // 将其视为整形常量
             token.setType(TokenType.INT_LITERAL);
             token.setIntValue(curCh);
             readChar();
-            if (curCh!='\'') {
+            if (curCh != '\'') {
                 throw new LexException("Illegal character at line "+token.getLineNum());
             }
         } else {
             if(Character.isDigit(curCh) || curCh=='.') {
                 // 数字常量
                 parseNum(token);
-            } else if(Character.isLetter(curCh)) {
+            } else if(Character.isLetter(curCh) || curCh=='_') {
                 // 字母开头
                 // 说明接下来是一个标识符或者关键字
                 parseLetter(token);
@@ -196,23 +245,48 @@ public class Lexer {
      * 判断是标识符 还是 关键字
      * @param token 待解析类型的token
      */
-    private void parseLetter(Token token) {
+    private void parseLetter(Token token) throws LexException {
+        // 是否出现了字母
+        boolean hasLetter = false;
         while (true) {
-            if(Character.isLetter(curCh)
-                    || Character.isDigit(curCh)
-                    || curCh == '_') {
+            if(curCh == '_') {
                 stringBuilder.append(curCh);
                 readChar();
-            } else {
+            } else if(Character.isLetter(curCh)) {
+                hasLetter = true;
+                stringBuilder.append(curCh);
+                readChar();
+            }
+            else if(Character.isDigit(curCh)) {
+                // 没有字母的时候不能有数字
+                if(!hasLetter) {
+                    illegalIdException(token);
+                } else{
+                    stringBuilder.append(curCh);
+                    readChar();
+                }
+            }
+            else {
                 pointer--;
                 break;
             }
         }
+
+        if (stringBuilder.charAt(stringBuilder.length()-1) == '_' ) {
+            // 标识符不能以下划线结尾
+            token.setLineNum(lineNum);
+            throw new LexException("IDENTIFIER cannot end with _ at line "+ token.getLineNum());
+        }
+
         String value = stringBuilder.toString();
         stringBuilder.delete(0, stringBuilder.length());
         if(RESERVED_WORDS.containsKey(value)) {
             token.setType(values[RESERVED_WORDS.get(value)]);
         } else {
+            if (value.length() > VAR_NAME_LIMIT) {
+                // 变量名过长
+                varNameTooLongException(token);
+            }
             token.setType(TokenType.IDENTIFIER);
             token.setStringValue(value);
         }
@@ -229,12 +303,16 @@ public class Lexer {
         boolean isExp = false;  // 指数形式
         while (true) {
             if(Character.isDigit(curCh) || curCh =='.') {
+                if (curCh == '.' && isReal) {
+                    // 不能有多个小数点
+                    illegalNumException(token);
+                }
                 stringBuilder.append(curCh);
                 if (curCh == '.') {
                     if (isReal || isHex) {
                         // 反复出现小数点
                         // 或已经是十六进制
-                        // 或已经是指数形式
+
                         illegalNumException(token);
                     } else {
                         // 有小数点说明是实数
@@ -382,6 +460,7 @@ public class Lexer {
     private void illegalNumException(Token token) throws LexException {
         // 中途可能会换行，如注释
         token.setLineNum(lineNum);
+        clearStrBuilder();
         throw new LexException("Illegal number literal at line "+ token.getLineNum());
     }
 
@@ -389,9 +468,23 @@ public class Lexer {
     private void illegalIdException(Token token) throws LexException {
         // 中途可能会换行，如注释
         token.setLineNum(lineNum);
+        clearStrBuilder();
         throw new LexException("IDENTIFIER cannot start with digit at line "+ token.getLineNum());
     }
 
+    private void varNameTooLongException(Token token) throws LexException {
+        // 中途可能会换行，如注释
+        token.setLineNum(lineNum);
+        clearStrBuilder();
+        throw new LexException("Variable name too long at line "+ token.getLineNum());
+    }
+
+    /**
+     * 清空构造中的字符串缓冲区
+     */
+    private void clearStrBuilder() {
+        stringBuilder.delete(0, stringBuilder.length());
+    }
 
     public void setSrcCode(String srcCode) {
         this.srcCode = srcCode;

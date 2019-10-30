@@ -11,10 +11,13 @@ public enum TokenType {
     ELSE,
     WHILE,
     PRINT,
+    SCAN,
     INT,
     REAL,
     CHAR,
     FOR,
+    CONTINUE,
+    BREAK,
 
     // 算术运算符
     PLUS,       // +
@@ -24,17 +27,18 @@ public enum TokenType {
     ASSIGN,     // =
 
     // 关系运算符
-    LESS,       // <
-    LESS_EQ,       // <=
-    GREATER,    // >
-    GREATER_EQ,    // >=
-    EQUAL,      // ==
-    NOT_EQUAL,  // <>
+    LESS,           // <
+    LESS_EQ,        // <=
+    GREATER,        // >
+    GREATER_EQ,     // >=
+    EQUAL,          // ==
+    NOT_EQUAL,      // <>
 
 
     // 分隔符
     SEMICOLON,          // ;
-    SINGLE_QUOTE,          // '
+    SINGLE_QUOTE,       // '
+    COMMA,       // ,
 
     // 括号
     L_PARENTHESIS,      // (

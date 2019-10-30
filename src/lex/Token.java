@@ -17,6 +17,13 @@ public class Token {
     // 行号
     private int lineNum;
 
+    public Token() {
+    }
+
+    public Token(TokenType type) {
+        this.type = type;
+    }
+
     public TokenType getType () {
         return type;
     }
@@ -75,12 +82,5 @@ public class Token {
         stringBuilder.append(", lineNum=").append(lineNum);
         stringBuilder.append('}');
         return stringBuilder.toString();
-//        return "Token{" +
-//                "type=" + type +
-//                ", stringValue='" + stringValue + '\'' +
-//                ", intValue=" + intValue +
-//                ", realValue=" + realValue +
-//                ", lineNum=" + lineNum +
-//                '}';
     }
 }
