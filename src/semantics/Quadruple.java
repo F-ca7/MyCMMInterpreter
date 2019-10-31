@@ -10,15 +10,21 @@ public class Quadruple {
     // 操作类型
     String operation;
 
+    // 第一个操作数
+    Operand firstOperand;
+    // 第二个操作数
+    Operand secondOperand;
+
     // 第一个操作数类型
     OperandType firstOperandType = OperandType.NULL;
     // 第二个操作数类型
     OperandType secondOperandType = OperandType.NULL;
+
     // 第一个操作数的标识符
     String firstOperandName;
     // 第二个操作数的标识符
     String secondOperandName;
-    // 目标的标识符
+    // 目标位置的标识符
     String dest;
     // 第一个操作数的整型字面量
     int firstOperandIntLiteral;

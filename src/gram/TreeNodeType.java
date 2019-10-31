@@ -35,9 +35,10 @@ public enum TreeNodeType {
      */
     ASSIGN,
     /**
-     * 命令行输出，
+     * 命令行输出，输入
      */
     PRINT,
+    SCAN,
 
     /**
      * 算数运算, left存储第一个操作数, right存储第二个操作数
@@ -63,7 +64,6 @@ public enum TreeNodeType {
      * 所有的else if存储在statementBlock里
      */
     IF,
-    ELSE,
     ELSE_IF,
 
 

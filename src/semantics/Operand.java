@@ -6,6 +6,7 @@ package semantics;
  * @date 2019/10/28 9:37
  **/
 class Operand {
+    // 操作数的名字
+    public String name;
 
-    String name;
 }

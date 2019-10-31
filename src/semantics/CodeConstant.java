@@ -13,6 +13,8 @@ class CodeConstant {
     static final String JMP = "jmp";
     // 命令行输出
     static final String PRINT = "print";
+    // 命令行输入
+    static final String SCAN = "scan";
     // 进入语句块
     static final String IN = "in";
     // 退出语句块

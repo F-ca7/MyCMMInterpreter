@@ -49,7 +49,7 @@ public class GramParser {
 
 
     public static void main(String[] args) {
-        Lexer lexer = new Lexer("E:\\desktop\\MyCMMInterpreter\\test_gram_1.cmm");
+        Lexer lexer = new Lexer("Y:\\desktop\\MyCMMInterpreter\\test_gram_1.cmm");
         lexer.loadSourceCode();
         lexer.loadTokenList();
         GramParser parser = new GramParser(lexer);
@@ -142,6 +142,9 @@ public class GramParser {
                 case PRINT:
                     node = parsePrintStatement();
                     break;
+                case SCAN:
+                    node = parseScanStatement();
+                    break;
                 case IF:
                     node = parseIfStatement();
                     break;
@@ -173,6 +176,7 @@ public class GramParser {
 
         return node;
     }
+
 
     /**
      * 解析continue
@@ -251,6 +255,8 @@ public class GramParser {
             node.right = parseArithmeticExpression();
             matchToken(TokenType.R_BRACKET);
             matchTokenNext(TokenType.SEMICOLON, true);
+        } else if(checkToken(TokenType.SEMICOLON)) {
+            // 单纯的声明变量
         } else {
             // 都不是，进入错误恢复
             recover(FOLLOW_STATEMENT, FIRST_STATEMENT);
@@ -335,7 +341,7 @@ public class GramParser {
     /**
      * 解析输出语句
      */
-    private TreeNode parsePrintStatement() throws GramException {
+    private TreeNode parsePrintStatement() {
         TreeNode node = new TreeNode();
         node.setType(TreeNodeType.PRINT);
         TreeNode left = new TreeNode();
@@ -347,6 +353,24 @@ public class GramParser {
 
         return node;
     }
+
+    /**
+     * 解析输入语句
+     */
+    private TreeNode parseScanStatement() {
+        TreeNode node = new TreeNode();
+        node.setType(TreeNodeType.SCAN);
+        TreeNode left = new TreeNode();
+        left.setType(TreeNodeType.IDENTIFIER);
+        matchTokenNext(TokenType.IDENTIFIER);
+        left.setSymbolName(curToken.getStringValue());
+        node.left = left;
+        matchTokenNext(TokenType.SEMICOLON, true);
+
+        return node;
+    }
+
+
 
     /**
      * 解析if语句
@@ -622,7 +646,7 @@ public class GramParser {
     /**
      * 用预期类型匹配下一个token
      */
-    private void matchTokenNext (TokenType type) throws GramException {
+    private void matchTokenNext (TokenType type) {
         getNextToken();
         matchToken(type);
     }

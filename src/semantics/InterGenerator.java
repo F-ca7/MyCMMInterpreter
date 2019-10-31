@@ -68,6 +68,9 @@ class InterGenerator {
                 case PRINT:
                     genPrint(node);
                     break;
+                case SCAN  :
+                    genScan(node);
+                    break;
                 case STATEMENT_BLOCK:
                     genStatementBlock(node);
                     break;
@@ -85,6 +88,8 @@ class InterGenerator {
             }
         }
     }
+
+
 
     /**
      * 生成break的中间代码
@@ -175,6 +180,16 @@ class InterGenerator {
         if(node.right != null) {
             // 声明的同时进行了赋值
             handleOperandLeft(code, node.right);
+        } else {
+            // 默认赋值为0
+            switch (node.getType()) {
+                case INT_DECLARATION:
+                    code.firstOperandType = OperandType.INT_LITERAL;
+                    code.firstOperandIntLiteral = 0;
+                case REAL_DECLARATION:
+                    code.firstOperandType = OperandType.REAL_LITERAL;
+                    code.firstOperandRealLiteral = 0.0;
+            }
         }
         if(node.getType() == TreeNodeType.INT_DECLARATION) {
             code.operation = CodeConstant.INT;
@@ -363,7 +378,16 @@ class InterGenerator {
         code.operation = CodeConstant.PRINT;
         code.dest = node.left.getSymbolName();
         codes.add(code);
+    }
 
+    /**
+     * 生成输入指令
+     */
+    private void genScan(TreeNode node) {
+        Quadruple code = new Quadruple();
+        code.operation = CodeConstant.SCAN;
+        code.dest = node.left.getSymbolName();
+        codes.add(code);
     }
 
     /**

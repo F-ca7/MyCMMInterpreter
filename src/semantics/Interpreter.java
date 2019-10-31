@@ -34,10 +34,10 @@ public class Interpreter {
     private boolean isSecondOperandInt;
 
     private Symbol condition;
-
+    private Scanner scanner = new Scanner(System.in);
 
     public static void main(String[] args) {
-        Lexer lexer = new Lexer("E:\\desktop\\MyCMMInterpreter\\test.cmm");
+        Lexer lexer = new Lexer("Y:\\desktop\\MyCMMInterpreter\\test2.cmm");
         lexer.loadSourceCode();
         lexer.loadTokenList();
         GramParser parser = new GramParser(lexer);
@@ -89,6 +89,9 @@ public class Interpreter {
                     break;
                 case CodeConstant.JMP:
                     jump(code);
+                    break;
+                case CodeConstant.SCAN:
+                    scan(code);
                     break;
                 case CodeConstant.PRINT:
                     print(code);
@@ -165,6 +168,20 @@ public class Interpreter {
     }
 
     /**
+     * 从控制台读取输入
+     */
+    private void scan(Quadruple code) {
+        Symbol symbol = getSymbol(code.dest);
+        if(symbol.getType() == SymValueType.INT) {
+            symbol.setIntValue(scanner.nextInt());
+        } else if(symbol.getType() == SymValueType.REAL){
+            symbol.setRealValue(scanner.nextDouble());
+        }
+        nextInstruction();
+    }
+
+
+    /**
      * 进入语句块
      */
     private void in() {
@@ -188,7 +205,7 @@ public class Interpreter {
     /**
      * 访问数组
      */
-    private void arrayAccess(Quadruple code) {
+    private void arrayAccess(Quadruple code) throws ExecutionException {
         Symbol symbol = new Symbol(code.dest);
         int index = 0;
         switch (code.secondOperandType) {
@@ -199,13 +216,27 @@ public class Interpreter {
                 index = code.secondOperandIntLiteral;
                 break;
         }
+
         Symbol array = symbolTable.getSymbol(code.firstOperandName);
+        if (index < 0) {
+            // 越下界
+            arrayIndexOutOfBoundsException(index);
+        }
         symbol.setArrName(array.getName());
         symbol.setIndex(index);
+
         if(array.getType() == SymValueType.INT_ARRAY) {
+            if (index >= (array.getIntArray().length)) {
+                // 越上界
+                arrayIndexOutOfBoundsException(index);
+            }
             symbol.setType(SymValueType.INT_ARRAY_ELEMENT);
             symbol.setIntValue(array.getIntArray()[index]);
         } else if(array.getType() == SymValueType.REAL_ARRAY) {
+            if (index >= (array.getRealArray().length)) {
+                // 越上界
+                arrayIndexOutOfBoundsException(index);
+            }
             symbol.setType(SymValueType.REAL_ARRAY_ELEMENT);
             symbol.setRealValue(array.getRealArray()[index]);
         }
@@ -274,7 +305,7 @@ public class Interpreter {
     /**
      * 关系运算
      */
-    private void relationOperation(Quadruple code) {
+    private void relationOperation(Quadruple code) throws ExecutionException {
         double operand1 = getFirstOperand(code);
         double operand2 = getSecondOperand(code);
         Symbol symbol = new Symbol(code.dest);
@@ -307,8 +338,13 @@ public class Interpreter {
     /**
      * 赋值
      */
-    private void assign(Quadruple code) {
+    private void assign(Quadruple code) throws ExecutionException {
         Symbol left = symbolTable.getSymbol(code.dest);
+        if (left == null) {
+            // 变量还没有被声明
+            // 不能赋值
+            varNotDeclaredException(code.dest);
+        }
         double right = getFirstOperand(code);
         Symbol array;
         if(left.getType() == SymValueType.INT_ARRAY_ELEMENT) {
@@ -336,7 +372,7 @@ public class Interpreter {
     /**
      * 声明变量
      */
-    private void declaration(Quadruple code) {
+    private void declaration(Quadruple code) throws ExecutionException {
         Symbol symbol = new Symbol(code.dest);
         double right = getFirstOperand(code);
         switch (code.operation) {
@@ -354,6 +390,10 @@ public class Interpreter {
                 break;
         }
         // 添加到当前语句块的变量列表
+        if (tempVars.get(blockLevel).contains(symbol.getName())) {
+            // 当前块已经有该变量名
+            redeclarationException(symbol.getName());
+        }
         addTempSymbol(symbol);
         nextInstruction();
     }
@@ -391,7 +431,7 @@ public class Interpreter {
     /**
      * 在当前块层次添加临时变量
      */
-    private void addTempSymbol(Symbol symbol) {
+    private void addTempSymbol(Symbol symbol)  {
         symbolTable.addSymbol(symbol);
         tempVars.get(blockLevel).add(symbol.getName());
     }
@@ -407,7 +447,7 @@ public class Interpreter {
     /**
      * 从四元组中获得第一个操作数
      */
-    private double getFirstOperand(Quadruple code) {
+    private double getFirstOperand(Quadruple code) throws ExecutionException {
         if(code.firstOperandType == OperandType.INT_LITERAL) {
             isFirstOperandInt = true;
             return (double)code.firstOperandIntLiteral;
@@ -417,6 +457,9 @@ public class Interpreter {
             // 是临时变量，在符号表中查找
             Symbol symbol = symbolTable.getSymbol(code.firstOperandName);
             // todo 查找不到符号后的处理
+            if (symbol == null) {
+                symbolNotFoundException(code.firstOperandName);
+            }
             if (symbol.getType() == SymValueType.INT ||
                     symbol.getType() == SymValueType.INT_ARRAY_ELEMENT) {
                 isFirstOperandInt = true;
@@ -445,5 +488,34 @@ public class Interpreter {
                 return symbol.getRealValue();
             }
         }
+    }
+
+    /**
+     * 重复声明异常
+     */
+    private void redeclarationException(String varName) throws ExecutionException{
+        throw new ExecutionException("Redeclaration of variable " + varName);
+    }
+
+
+    /**
+     * 找不到符号声明
+     */
+    private void symbolNotFoundException(String varName) throws ExecutionException{
+        throw new ExecutionException("Cannot find symbol " + varName);
+    }
+
+    /**
+     * 找不到变量声明
+     */
+    private void varNotDeclaredException(String varName) throws ExecutionException{
+        throw new ExecutionException("Variable " + varName + " is not declared!");
+    }
+
+    /**
+     * 数组索引越界
+     */
+    private void arrayIndexOutOfBoundsException(int index) throws ExecutionException{
+        throw new ExecutionException("Array index is out of bounds: "+index);
     }
 }
