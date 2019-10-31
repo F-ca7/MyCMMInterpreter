@@ -6,6 +6,7 @@ package symbols;
 public enum SymValueType {
     INT,
     REAL,
+    CHAR,
     INT_ARRAY,
     REAL_ARRAY,
     TRUE,

@@ -25,6 +25,7 @@ class CodeConstant {
     static final String INT_ARR = "int[]";
     static final String REAL_ARR = "real[]";
     static final String ASSIGN = "assign";
+    static final String CHAR = "char";
 
     static final String PLUS = "+";
     static final String MINUS = "-";
@@ -33,6 +34,9 @@ class CodeConstant {
     static final String LE = "<";
     static final String EQ = "==";
     static final String NEQ = "<>";
+    static final String GR = ">";
+    static final String LE_EQ = "<=";
+    static final String GR_EQ = ">=";
     // 数组访问
     static final String ARR_ACC = "arr_acc";
 

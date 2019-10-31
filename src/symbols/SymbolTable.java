@@ -22,8 +22,7 @@ public class SymbolTable {
     public void addSymbol(Symbol symbol) {
         if(!map.containsKey(symbol.getName())) {
             map.put(symbol.getName(),symbol);
-        }
-        else {
+        } else {
             symbol.next= map.get(symbol.getName());
             map.put(symbol.getName(),symbol);
         }

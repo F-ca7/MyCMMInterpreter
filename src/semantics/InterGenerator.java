@@ -50,6 +50,7 @@ class InterGenerator {
             switch (node.getType()) {
                 case INT_DECLARATION:
                 case REAL_DECLARATION:
+                case CHAR_DECLARATION:
                     genDeclaration(node);
                     break;
                 case INT_ARRAY_DECLARATION:
@@ -161,9 +162,19 @@ class InterGenerator {
             case EQUAL:
                 code.operation = CodeConstant.EQ;
                 break;
+            case GREATER:
+                code.operation = CodeConstant.GR;
+                break;
+            case LESS_EQ:
+                code.operation = CodeConstant.LE_EQ;
+                break;
+            case GREATER_EQ:
+                code.operation = CodeConstant.GR_EQ;
+                break;
             case NOT_EQUAL:
                 code.operation = CodeConstant.NEQ;
                 break;
+
         }
         handleOperandLeft(code, node.left);
         handleOperandRight(code, node.right);
@@ -189,12 +200,17 @@ class InterGenerator {
                 case REAL_DECLARATION:
                     code.firstOperandType = OperandType.REAL_LITERAL;
                     code.firstOperand = new RealOperand(0.0);
+                case CHAR_DECLARATION:
+                    code.firstOperandType = OperandType.INT_LITERAL;
+                    code.firstOperand = new IntOperand(0);
             }
         }
         if(node.getType() == TreeNodeType.INT_DECLARATION) {
             code.operation = CodeConstant.INT;
         } else if(node.getType() == TreeNodeType.REAL_DECLARATION) {
             code.operation = CodeConstant.REAL;
+        } else if(node.getType() == TreeNodeType.CHAR_DECLARATION) {
+            code.operation = CodeConstant.CHAR;
         }
         code.dest = node.left.getSymbolName();
         codes.add(code);

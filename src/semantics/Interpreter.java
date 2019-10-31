@@ -36,7 +36,7 @@ public class Interpreter {
     private Scanner scanner = new Scanner(System.in);
 
     public static void main(String[] args) {
-        Lexer lexer = new Lexer("Y:\\desktop\\MyCMMInterpreter\\test2.cmm");
+        Lexer lexer = new Lexer("Y:\\desktop\\MyCMMInterpreter\\test3.cmm");
         lexer.loadSourceCode();
         lexer.loadTokenList();
         GramParser parser = new GramParser(lexer);
@@ -103,6 +103,7 @@ public class Interpreter {
                     break;
                 case CodeConstant.INT:
                 case CodeConstant.REAL:
+                case CodeConstant.CHAR:
                     declaration(code);
                     break;
                 case CodeConstant.INT_ARR:
@@ -121,6 +122,9 @@ public class Interpreter {
                 case CodeConstant.LE:
                 case CodeConstant.EQ:
                 case CodeConstant.NEQ:
+                case CodeConstant.GR:
+                case CodeConstant.GR_EQ:
+                case CodeConstant.LE_EQ:
                     relationOperation(code);
                     break;
                 case CodeConstant.ASSIGN:
@@ -162,6 +166,8 @@ public class Interpreter {
             System.out.println(symbol.getIntValue());
         } else if(symbol.getType() == SymValueType.REAL) {
             System.out.println(symbol.getRealValue());
+        } else if (symbol.getType() == SymValueType.CHAR) {
+            System.out.printf("%c\n", symbol.getIntValue());
         }
         nextInstruction();
     }
@@ -316,6 +322,27 @@ public class Interpreter {
                     symbol.setType(SymValueType.FALSE);
                 }
                 break;
+            case CodeConstant.GR:
+                if(operand1 > operand2) {
+                    symbol.setType(SymValueType.TRUE);
+                } else {
+                    symbol.setType(SymValueType.FALSE);
+                }
+                break;
+            case CodeConstant.LE_EQ:
+                if(operand1 <= operand2) {
+                    symbol.setType(SymValueType.TRUE);
+                } else {
+                    symbol.setType(SymValueType.FALSE);
+                }
+                break;
+            case CodeConstant.GR_EQ:
+                if(operand1 >= operand2) {
+                    symbol.setType(SymValueType.TRUE);
+                } else {
+                    symbol.setType(SymValueType.FALSE);
+                }
+                break;
             case CodeConstant.EQ:
                 if(operand1 == operand2) {
                     symbol.setType(SymValueType.TRUE);
@@ -385,6 +412,12 @@ public class Interpreter {
                 symbol.setType(SymValueType.REAL);
                 if (code.firstOperandType != OperandType.NULL) {
                     symbol.setRealValue(right);
+                }
+                break;
+            case CodeConstant.CHAR:
+                symbol.setType(SymValueType.CHAR);
+                if (code.firstOperandType != OperandType.NULL) {
+                    symbol.setIntValue((int) right);
                 }
                 break;
         }

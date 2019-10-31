@@ -10,9 +10,8 @@ public class Symbol {
     private SymValueType type;
     // 符号名
     private String name;
-    // 所处层次
-    private int level;
-    // 比当前低一个层次的符号
+
+    // 不在一个层次但同名的符号
     Symbol next;
 
     private int intValue;
@@ -75,13 +74,6 @@ public class Symbol {
         return name;
     }
 
-    public int getLevel () {
-        return level;
-    }
-
-    public void setLevel (int level) {
-        this.level = level;
-    }
 
     public String getArrName() {
         return arrName;

@@ -133,6 +133,9 @@ public class GramParser {
                 case INT:
                     node = parseDeclarationStatement(TokenType.INT);
                     break;
+                case CHAR:
+                    node = parseDeclarationStatement(TokenType.CHAR);
+                    break;
                 case REAL:
                     node = parseDeclarationStatement(TokenType.REAL);
                     break;
@@ -276,6 +279,16 @@ public class GramParser {
                 } else {
                     node.setType(TreeNodeType.REAL_DECLARATION);
                 }
+
+                break;
+            case CHAR:
+                if(isArray) {
+                    // todo 字符串数组
+                    node.setType(TreeNodeType.INT_ARRAY_DECLARATION);
+                } else {
+                    node.setType(TreeNodeType.CHAR_DECLARATION);
+                }
+                break;
         }
 
         return node;
