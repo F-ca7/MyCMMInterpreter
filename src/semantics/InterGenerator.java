@@ -185,10 +185,10 @@ class InterGenerator {
             switch (node.getType()) {
                 case INT_DECLARATION:
                     code.firstOperandType = OperandType.INT_LITERAL;
-                    code.firstOperandIntLiteral = 0;
+                    code.firstOperand = new IntOperand(0);
                 case REAL_DECLARATION:
                     code.firstOperandType = OperandType.REAL_LITERAL;
-                    code.firstOperandRealLiteral = 0.0;
+                    code.firstOperand = new RealOperand(0.0);
             }
         }
         if(node.getType() == TreeNodeType.INT_DECLARATION) {
@@ -213,22 +213,22 @@ class InterGenerator {
         switch (node.right.getType()) {
             case INT_LITERAL:
                 code.firstOperandType = OperandType.INT_LITERAL;
-                code.firstOperandIntLiteral = node.right.getIntValue();
+                code.firstOperand = new IntOperand(node.right.getIntValue());
                 break;
             case IDENTIFIER:
                 code.firstOperandType = OperandType.IDENTIFIER;
-                code.firstOperandName = node.right.getSymbolName();
+                code.firstOperand.name = node.right.getSymbolName();
                 break;
             case PLUS:
             case MINUS:
             case MULTIPLY:
             case DIVIDE:
                 code.firstOperandType = OperandType.IDENTIFIER;
-                code.firstOperandName = genArithmetic(node.right);
+                code.firstOperand.name = genArithmetic(node.right);
                 break;
             case ARRAY_ACCESS:
                 code.firstOperandType = OperandType.IDENTIFIER;
-                code.firstOperandName = genArrayAccess(node.right);
+                code.firstOperand.name = genArrayAccess(node.right);
                 break;
         }
         code.dest = node.left.getSymbolName();
@@ -307,7 +307,7 @@ class InterGenerator {
         Quadruple code = new Quadruple();
         code.operation = CodeConstant.JMP_WITH_CONDITION;
         code.firstOperandType = OperandType.IDENTIFIER;
-        code.firstOperandName = condition;
+        code.firstOperand.name = condition;
         codes.add(code);
         codes.add(CodeConstant.inCode);
         generate(node.left.getStatements());
@@ -336,7 +336,7 @@ class InterGenerator {
             Quadruple code = new Quadruple();
             code.operation = CodeConstant.JMP_WITH_CONDITION;
             code.firstOperandType = OperandType.IDENTIFIER;
-            code.firstOperandName = condition;
+            code.firstOperand.name = condition;
             codes.add(code);
             backPatch.push(codes.size()-1);
         }
@@ -436,37 +436,37 @@ class InterGenerator {
         switch (operand1.getType()) {
             case INT_LITERAL:
                 code.firstOperandType = OperandType.INT_LITERAL;
-                code.firstOperandIntLiteral = operand1.getIntValue();
+                code.firstOperand = new IntOperand(operand2.getIntValue());
                 break;
             case REAL_LITERAL:
                 code.firstOperandType = OperandType.REAL_LITERAL;
-                code.firstOperandRealLiteral = operand1.getRealValue();
+                code.firstOperand = new RealOperand(operand2.getRealValue());
                 break;
             case IDENTIFIER:
                 code.firstOperandType = OperandType.IDENTIFIER;
-                code.firstOperandName = operand1.getSymbolName();
+                code.firstOperand.name = operand1.getSymbolName();
                 break;
         }
         switch (operand2.getType()) {
             case INT_LITERAL:
                 code.secondOperandType = OperandType.INT_LITERAL;
-                code.secondOperandIntLiteral = operand2.getIntValue();
+                code.secondOperand = new IntOperand(operand2.getIntValue());
                 if(code.operation.equals(CodeConstant.DIV) &&
-                        code.secondOperandIntLiteral == 0) {
+                        ((IntOperand)code.secondOperand).intLiteral == 0) {
                     divByZeroException();
                 }
                 break;
             case REAL_LITERAL:
                 code.secondOperandType = OperandType.REAL_LITERAL;
-                code.secondOperandRealLiteral = operand2.getRealValue();
+                code.secondOperand = new RealOperand(operand2.getRealValue());
                 if(code.operation.equals(CodeConstant.DIV) &&
-                        Math.abs(code.secondOperandRealLiteral) < 1e-10) {
+                        Math.abs(((RealOperand)code.secondOperand).realLiteral) < 1e-10) {
                     divByZeroException();
                 }
                 break;
             case IDENTIFIER:
                 code.secondOperandType = OperandType.IDENTIFIER;
-                code.secondOperandName = operand2.getSymbolName();
+                code.secondOperand.name = operand2.getSymbolName();
                 break;
         }
         code.dest = tempName;
@@ -491,7 +491,7 @@ class InterGenerator {
         handleOperandRight(code,operand1);
         if(operand2.getType() == TreeNodeType.IDENTIFIER) {
             code.firstOperandType = OperandType.IDENTIFIER;
-            code.firstOperandName = operand2.getSymbolName();
+            code.firstOperand.name = operand2.getSymbolName();
         }
 
         code.dest = getNextTempName();
@@ -502,54 +502,54 @@ class InterGenerator {
     /**
      * 生成左操作数的中间代码
      */
-    private void handleOperandLeft (Quadruple code, TreeNode operand) throws SemanticException {
-        switch (operand.getType()) {
+    private void handleOperandLeft (Quadruple code, TreeNode node) throws SemanticException {
+        switch (node.getType()) {
             case INT_LITERAL:
                 code.firstOperandType = OperandType.INT_LITERAL;
-                code.firstOperandIntLiteral = operand.getIntValue();
+                code.firstOperand = new IntOperand(node.getIntValue());
                 break;
             case REAL_LITERAL:
                 code.firstOperandType = OperandType.REAL_LITERAL;
-                code.firstOperandRealLiteral = operand.getRealValue();
+                code.firstOperand = new RealOperand(node.getRealValue());
                 break;
             case IDENTIFIER:
                 code.firstOperandType = OperandType.IDENTIFIER;
-                code.firstOperandName = operand.getSymbolName();
+                code.firstOperand.name = node.getSymbolName();
                 break;
             case ARRAY_ACCESS:
                 code.firstOperandType = OperandType.IDENTIFIER;
-                code.firstOperandName = genArrayAccess(operand);
+                code.firstOperand.name = genArrayAccess(node);
                 break;
             default:
                 code.firstOperandType = OperandType.IDENTIFIER;
-                code.firstOperandName = genArithmetic(operand);
+                code.firstOperand.name = genArithmetic(node);
         }
     }
 
     /**
      * 生成右操作数的中间代码
      */
-    private void handleOperandRight(Quadruple code, TreeNode operand) throws SemanticException {
-        switch (operand.getType()) {
+    private void handleOperandRight(Quadruple code, TreeNode node) throws SemanticException {
+        switch (node.getType()) {
             case INT_LITERAL:
                 code.secondOperandType = OperandType.INT_LITERAL;
-                code.secondOperandIntLiteral = operand.getIntValue();
+                code.secondOperand = new IntOperand(node.getIntValue());
                 break;
             case REAL_LITERAL:
                 code.secondOperandType = OperandType.REAL_LITERAL;
-                code.secondOperandRealLiteral = operand.getRealValue();
+                code.secondOperand = new RealOperand(node.getRealValue());
                 break;
             case IDENTIFIER:
                 code.secondOperandType = OperandType.IDENTIFIER;
-                code.secondOperandName = operand.getSymbolName();
+                code.secondOperand.name = node.getSymbolName();
                 break;
             case ARRAY_ACCESS:
                 code.firstOperandType = OperandType.IDENTIFIER;
-                code.firstOperandName = genArrayAccess(operand);
+                code.firstOperand.name = genArrayAccess(node);
                 break;
             default:
                 code.secondOperandType = OperandType.IDENTIFIER;
-                code.secondOperandName = genArithmetic(operand);
+                code.secondOperand.name = genArithmetic(node);
         }
     }
 

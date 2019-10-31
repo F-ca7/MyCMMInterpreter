@@ -2,7 +2,6 @@ package semantics;
 
 import exception.ExecutionException;
 import exception.GramException;
-import exception.LexException;
 import exception.SemanticException;
 import gram.GramParser;
 import lex.Lexer;
@@ -210,14 +209,14 @@ public class Interpreter {
         int index = 0;
         switch (code.secondOperandType) {
             case IDENTIFIER:
-                index = symbolTable.getSymbol(code.secondOperandName).getIntValue();
+                index = symbolTable.getSymbol(code.secondOperand.name).getIntValue();
                 break;
             case INT_LITERAL:
-                index = code.secondOperandIntLiteral;
+                index = ((IntOperand)(code.secondOperand)).intLiteral;
                 break;
         }
 
-        Symbol array = symbolTable.getSymbol(code.firstOperandName);
+        Symbol array = symbolTable.getSymbol(code.firstOperand.name);
         if (index < 0) {
             // 越下界
             arrayIndexOutOfBoundsException(index);
@@ -450,15 +449,15 @@ public class Interpreter {
     private double getFirstOperand(Quadruple code) throws ExecutionException {
         if(code.firstOperandType == OperandType.INT_LITERAL) {
             isFirstOperandInt = true;
-            return (double)code.firstOperandIntLiteral;
+            return (double)((IntOperand)code.firstOperand).intLiteral;
         } else if(code.firstOperandType == OperandType.REAL_LITERAL) {
-            return code.firstOperandRealLiteral;
+            return ((RealOperand)code.firstOperand).realLiteral;
         } else {
             // 是临时变量，在符号表中查找
-            Symbol symbol = symbolTable.getSymbol(code.firstOperandName);
+            Symbol symbol = symbolTable.getSymbol(code.firstOperand.name);
             // todo 查找不到符号后的处理
             if (symbol == null) {
-                symbolNotFoundException(code.firstOperandName);
+                symbolNotFoundException(code.firstOperand.name);
             }
             if (symbol.getType() == SymValueType.INT ||
                     symbol.getType() == SymValueType.INT_ARRAY_ELEMENT) {
@@ -476,11 +475,11 @@ public class Interpreter {
     private double getSecondOperand(Quadruple code) {
         if(code.secondOperandType == OperandType.INT_LITERAL) {
             isSecondOperandInt = true;
-            return (double)code.secondOperandIntLiteral;
+            return (double)((IntOperand)code.secondOperand).intLiteral;
         } else if(code.secondOperandType == OperandType.REAL_LITERAL) {
-            return code.firstOperandRealLiteral;
+            return ((RealOperand)code.secondOperand).realLiteral;
         } else {
-            Symbol symbol = symbolTable.getSymbol(code.secondOperandName);
+            Symbol symbol = symbolTable.getSymbol(code.secondOperand.name);
             if(symbol.getType() == SymValueType.INT||symbol.getType() == SymValueType.REAL_ARRAY_ELEMENT) {
                 isSecondOperandInt = true;
                 return (double)symbol.getIntValue();

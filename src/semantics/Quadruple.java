@@ -20,25 +20,17 @@ public class Quadruple {
     // 第二个操作数类型
     OperandType secondOperandType = OperandType.NULL;
 
-    // 第一个操作数的标识符
-    String firstOperandName;
-    // 第二个操作数的标识符
-    String secondOperandName;
     // 目标位置的标识符
     String dest;
-    // 第一个操作数的整型字面量
-    int firstOperandIntLiteral;
-    // 第一个操作数的实数字面量
-    double firstOperandRealLiteral;
-    // 第二个操作数的整型字面量
-    int secondOperandIntLiteral;
-    // 第二个操作数的实数字面量
-    double secondOperandRealLiteral;
+
     // 跳转指令的语句位置
     int jumpLocation;
 
 
-    Quadruple(){}
+    Quadruple(){
+        firstOperand = new Operand();
+        secondOperand = new Operand();
+    }
     Quadruple(String codeConstant) {
         operation = codeConstant;
     }
@@ -47,8 +39,8 @@ public class Quadruple {
     public String toString() {
         StringBuilder builder = new StringBuilder();
         builder.append(operation);
-        appendOpToBuilder(builder, firstOperandType, firstOperandIntLiteral, firstOperandRealLiteral, firstOperandName);
-        appendOpToBuilder(builder, secondOperandType, secondOperandIntLiteral, secondOperandRealLiteral, secondOperandName);
+        appendOpToBuilder(builder, firstOperandType, firstOperand);
+        appendOpToBuilder(builder, secondOperandType, secondOperand);
         builder.append(",");
         if(operation.equals(CodeConstant.JMP) ||
                 operation.equals(CodeConstant.JMP_WITH_CONDITION)) {
@@ -60,17 +52,17 @@ public class Quadruple {
 
     }
 
-    private void appendOpToBuilder(StringBuilder builder, OperandType operandType, int operandIntLiteral, double operandRealLiteral, String operandName) {
+    private void appendOpToBuilder(StringBuilder builder, OperandType operandType, Operand operand) {
         builder.append(",");
         switch (operandType) {
             case INT_LITERAL:
-                builder.append(operandIntLiteral);
+                builder.append(((IntOperand)operand).intLiteral);
                 break;
             case REAL_LITERAL:
-                builder.append(operandRealLiteral);
+                builder.append(((RealOperand)operand).realLiteral);
                 break;
             case IDENTIFIER:
-                builder.append(operandName);
+                builder.append(operand.name);
                 break;
             case NULL:
                 builder.append("null");
