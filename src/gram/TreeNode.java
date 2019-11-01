@@ -12,21 +12,22 @@ import java.util.Queue;
 public class TreeNode {
     public TreeNode left;
     public TreeNode right;
-
+    // 结点类型
+    private TreeNodeType type;
     // 标识符的名字
     private String symbolName;
     // 整型值
     private int intValue;
     // 实数值
     private double realValue;
-
+    // 是否为负
+    private boolean isNegative = false;
 
     // 语句块
     private LinkedList<TreeNode> statementBlock = new LinkedList<>();
     // bool条件表达式
     private TreeNode condition;
-    // 结点类型
-    private TreeNodeType type;
+
 
     public String getSymbolName () {
         return symbolName;
@@ -150,9 +151,15 @@ public class TreeNode {
                 return stringBuilder;
             case INT_LITERAL:
                 stringBuilder.append(", value=").append(intValue);
+                if (isNegative) {
+                    stringBuilder.append(", negative");
+                }
                 break;
             case REAL_LITERAL:
                 stringBuilder.append(", value=").append(realValue);
+                if (isNegative) {
+                    stringBuilder.append(", negative");
+                }
                 break;
             case IDENTIFIER:
                 stringBuilder.append(", name=").append(symbolName);
@@ -173,5 +180,13 @@ public class TreeNode {
         for (int j=0; j<count; j++) {
             stringBuilder.append("\t");
         }
+    }
+
+    public boolean isNegative() {
+        return isNegative;
+    }
+
+    public void setNegative(boolean negative) {
+        isNegative = negative;
     }
 }

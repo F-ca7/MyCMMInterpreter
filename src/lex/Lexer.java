@@ -219,7 +219,7 @@ public class Lexer {
             token.setIntValue(curCh);
             readChar();
             if (curCh != '\'') {
-                throw new LexException("Illegal character at line "+token.getLineNum());
+                throw new LexException("Illegal character at line " + token.getLineNum());
             }
         } else {
             if(Character.isDigit(curCh) || curCh=='.') {

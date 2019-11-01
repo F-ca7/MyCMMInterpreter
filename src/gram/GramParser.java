@@ -1,7 +1,6 @@
 package gram;
 
 import exception.GramException;
-import exception.LexException;
 import lex.Lexer;
 import lex.Token;
 import lex.TokenType;
@@ -49,7 +48,7 @@ public class GramParser {
 
 
     public static void main(String[] args) {
-        Lexer lexer = new Lexer("Y:\\desktop\\MyCMMInterpreter\\test_gram_1.cmm");
+        Lexer lexer = new Lexer("E:\\desktop\\MyCMMInterpreter\\test_gram_2.cmm");
         lexer.loadSourceCode();
         lexer.loadTokenList();
         GramParser parser = new GramParser(lexer);
@@ -61,17 +60,7 @@ public class GramParser {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        if (!parser.ifSuccess) {
-            // 报告错误
-            System.out.println("语法分析错误！");
-            System.out.println(parser.errInfoBuffer.toString());
-        } else {
-            System.out.println("语法分析成功");
-            for(int i = 0;i<parser.treeNodes.size(); i++) {
-                System.out.printf("第%d棵语法树:\n", i+1);
-                System.out.println(TreeNode.getLevelOrderString(parser.treeNodes.get(i)));
-            }
-        }
+
     }
 
     /**
@@ -222,9 +211,6 @@ public class GramParser {
             if (curToken.getType() == TokenType.EOF) {
                 expectedException(TokenType.R_BRACE, curToken.getType(), curToken.getLineNum(), false);
                 break;
-//                String err = String.format("Expected %s, found %s at line %d",
-//                        TokenType.R_BRACE, curToken.getType(), curToken.getLineNum());
-//                throw new GramException(err);
             }
         }
         return node;
@@ -449,7 +435,7 @@ public class GramParser {
 
     /**
      * 根据token列表解析算术表达式
-     * 不是做运算，只解析成对应的树
+     * 不做运算，只解析成对应的树
      * @param tokens 对应的token列表
      */
     private TreeNode parseArithmeticExpression(List<Token> tokens) throws GramException{
@@ -461,17 +447,25 @@ public class GramParser {
         Stack<Character> brackets = new Stack<>();
         // token指针
         ListIterator<Token> iterator = tokens.listIterator();
-
+        // 前一个token是否为操作符
+        boolean isPrevOperator = false;
+        // 用来判断下一个操作数是不是负的
+        boolean isNegative = false;
         while (true){
             if(iterator.hasNext()) {
                 Token token = iterator.next();
                 if (checkTokenOperand(token)) {
+                    isPrevOperator = false;
                     // token是操作数
                     if (iterator.hasNext()) {
+                        // 操作数后还有符号
                         if (iterator.next().getType() != TokenType.L_BRACKET) {
-                            operandStack.push(tokenToTreeNode(token));
+                            operandStack.push(tokenToTreeNode(token, isNegative));
+                            isNegative = false;
+                            // 指针回退一格
                             iterator.previous();
                         } else {
+                            // 记录用于数组的中括号
                             int start = iterator.previousIndex();
                             int end;
                             brackets.push('[');
@@ -488,48 +482,63 @@ public class GramParser {
                             operandStack.push(parseArrayAccess(tokens.subList(start-1, end)));
                         }
                     } else {
+                        // 操作数后还有符号
                         // 当前是最后一个token
                         // 直接入栈
-                        operandStack.push(tokenToTreeNode(token));
+                        operandStack.push(tokenToTreeNode(token, isNegative));
                     }
                 } else if (checkTokenArithmeticOperator(token)) {
                     // token是运算符
                     if (operatorStack.empty()) {
                         operatorStack.push(tokenToTreeNode(token));
+                        isPrevOperator = true;
                     } else {
                         // 取得前一个操作符与当前操作符
                         TreeNode preOperator = operatorStack.peek();
+
+                        if (token.getType()==TokenType.MINUS && isPrevOperator) {
+                            // 设置负号
+                            isNegative = !isNegative;
+                            continue;
+                        }
                         TreeNode curOperator = tokenToTreeNode(token);
 
-                            if (priorityCompare(preOperator, curOperator)) {
-                                Token next = iterator.next();
-                                TreeNode currentOperand;
-                                if (!checkTokenBracket(next)) {
-                                    //如果下一个token不是左括号
-                                    currentOperand = tokenToTreeNode(next);
-                                } else {
-                                    // 如果下一个token是左括号
-                                    // 从后往前遍历找右括号
-                                    currentOperand = sliceExpressionInBrackets(iterator,tokens);
-                                }
-                                TreeNode previousOperand = operandStack.pop();
-                                curOperator.right = currentOperand;
-                                curOperator.left = previousOperand;
-                                operandStack.push(curOperator);
+                        if (priorityCompare(preOperator, curOperator)) {
+                            // 当前操作符优先级更高
+                            Token next = iterator.next();
+                            TreeNode curOperand;
+                            if (!checkTokenLParenth(next)) {
+                                // 下一个token不是左括号
+                                curOperand = tokenToTreeNode(next, isNegative);
+                                isNegative = false;
                             } else {
-
-                                TreeNode operand1 = operandStack.pop();
-                                TreeNode operand2 = operandStack.pop();
-                                preOperator.left = operand1;
-                                preOperator.right = operand2;
-                                operandStack.push(preOperator);
-                                operatorStack.push(curOperator);
+                                // 下一个token是左括号
+                                // 则从后往前遍历找右括号
+                                curOperand = parseExpInParenthesis(iterator, tokens);
                             }
+                            // 由于当前操作符优先级更高
+                            // 需要先计算当前操作符
+                            TreeNode previousOperand = operandStack.pop();
+                            // 把当前操作符与(前一个操作数和当前操作数)结合起来
+                            curOperator.right = curOperand;
+                            curOperator.left = previousOperand;
+                            operandStack.push(curOperator);
+                            isPrevOperator = false;
+                        } else {
+                            // 前一个操作符优先级更高或一样
+                            // 则取出前一个操作符和前两个操作数进行结合
+                            TreeNode operand1 = operandStack.pop();
+                            TreeNode operand2 = operandStack.pop();
+                            preOperator.left = operand1;
+                            preOperator.right = operand2;
+                            operandStack.push(preOperator);
+                            operatorStack.push(curOperator);
+                        }
 
                     }
                 } else if(token.getType() == TokenType.L_PARENTHESIS) {
                     // token是左括号
-                    TreeNode operand = sliceExpressionInBrackets(iterator,tokens);
+                    TreeNode operand = parseExpInParenthesis(iterator,tokens);
                     operandStack.push(operand);
                 } else {
                     throw new GramException("Invalid arithmetic expression at line " + token.getLineNum());
@@ -538,17 +547,15 @@ public class GramParser {
                 // token处理完毕
                 if(operandStack.size() > 1) {
                     // 当操作数栈中数量大于1时
-                    //
                     TreeNode operand1 = operandStack.pop();
                     TreeNode operand2 = operandStack.pop();
                     TreeNode operator = operatorStack.pop();
                     operator.left = operand1;
                     operator.right = operand2;
-                    // todo ?
                     operandStack.push(operator);
                 } else {
                     // 栈中只剩一个结点
-                    // 结束循环
+                    // 即形成了完整的一棵表达式树, 结束
                     break;
                 }
             }
@@ -560,9 +567,10 @@ public class GramParser {
 
     /**
      * 获取表达式所有词法单元
+     * 同时检查括号个数、类型的匹配
      * @return token序列
      */
-    private List<Token> getAllExpressionTokens() throws GramException {
+    private List<Token> getAllExpressionTokens() {
         List<Token> tokens = new ArrayList<>();
         // 小括号栈
         Stack<Character> s = new Stack<>();
@@ -594,7 +602,7 @@ public class GramParser {
                         s.pop();
                         tokens.add(curToken);
                     } else {
-                        throw new GramException("Parenthesis mismatch at line " + curToken.getLineNum());
+                        parenthMismatchException(curToken.getLineNum());
                     }
                     break;
                 case L_BRACKET:
@@ -603,13 +611,16 @@ public class GramParser {
                     break;
                 case R_BRACKET:
                     if(s2.empty()) {
-                        // 如果栈为空遇到右括号，则表达式结束
+                        // 如果栈为空遇到右括号，可能是在if的条件中
+                        // 则表达式结束
                         break loop;
                     } else if(s2.peek() == '[') {
+                        // 括号只能一一匹配
+                        // 不能 ([)]
                         s2.pop();
                         tokens.add(curToken);
                     } else {
-                        throw new GramException("Brackets mismatch line " + curToken.getLineNum());
+                        parenthMismatchException(curToken.getLineNum());
                     }
                     break;
                 default:
@@ -694,11 +705,6 @@ public class GramParser {
     private void matchToken(TokenType type, boolean ifAmend) {
         if(curToken.getType() != type) {
             expectedException(type, curToken.getType(), curToken.getLineNum(), ifAmend);
-//            String err = String.format("Expected %s, found %s at line %d",
-//                    type, curToken.getType(), curToken.getLineNum());
-//            ifSuccess = false;
-//            errInfoBuffer.append(err).append("\n");
-//            //throw new GramException(err);
         }
     }
 
@@ -776,6 +782,45 @@ public class GramParser {
         return node;
     }
 
+    /**
+     * 将词法单元转换为语法树的结点
+     * @param token 词法单元
+     * @return 语法树结点
+     */
+    private TreeNode tokenToTreeNode(Token token, boolean isNegative) {
+        TreeNode node = new TreeNode();
+        switch (token.getType()) {
+            case IDENTIFIER:
+                node.setType(TreeNodeType.IDENTIFIER);
+                node.setSymbolName(token.getStringValue());
+                node.setNegative(isNegative);
+                break;
+            case INT_LITERAL:
+                node.setType(TreeNodeType.INT_LITERAL);
+                node.setIntValue(token.getIntValue());
+                node.setNegative(isNegative);
+                break;
+            case REAL_LITERAL:
+                node.setType(TreeNodeType.REAL_LITERAL);
+                node.setRealValue(token.getRealValue());
+                node.setNegative(isNegative);
+                break;
+            case PLUS:
+                node.setType(TreeNodeType.PLUS);
+                break;
+            case MINUS:
+                node.setType(TreeNodeType.MINUS);
+                break;
+            case MULTIPLY:
+                node.setType(TreeNodeType.MULTIPLY);
+                break;
+            case DIVIDE:
+                node.setType(TreeNodeType.DIVIDE);
+                break;
+        }
+        return node;
+    }
+
 
     /**
      * 比较两个运算符优先级
@@ -820,7 +865,7 @@ public class GramParser {
      * 检查词法单元是否为左括号
      * @param token 待检查词法单元
      */
-    private boolean checkTokenBracket(Token token) {
+    private boolean checkTokenLParenth(Token token) {
         return token.getType() == TokenType.L_PARENTHESIS;
     }
 
@@ -836,6 +881,7 @@ public class GramParser {
         left.setType(TreeNodeType.IDENTIFIER);
         left.setSymbolName(tokens.get(0).getStringValue());
         node.left = left;
+        // todo 此处不太安全
         if(tokens.size() == 4) {
             // 如果大小为4的话
             // 说明是最基础的一维数组+索引
@@ -853,21 +899,28 @@ public class GramParser {
     }
 
     /**
-     * 根据小括号划分表达式
+     * 根据小括号解析表达式
      */
-    private TreeNode sliceExpressionInBrackets(ListIterator<Token> iterator,
-                                               List<Token> tokens) throws GramException {
-        Stack<Character> brackets = new Stack<>();
+    private TreeNode parseExpInParenthesis(ListIterator<Token> iterator,
+                                           List<Token> tokens) throws GramException {
+
+        Stack<Character> parenths = new Stack<>();
+        // 记录小括号开始的位置
         int start = iterator.previousIndex();
         int end;
-        brackets.push('(');
+        parenths.push('(');
         Token aim;
-        while (!brackets.empty()) {
+        while (!parenths.empty()) {
+            if (!iterator.hasNext()) {
+                // 内容结束，小括号没匹配完
+                parenthMismatchException(curToken.getLineNum());
+                break;
+            }
             aim = iterator.next();
             if (aim.getType() == TokenType.L_PARENTHESIS) {
-                brackets.push('(');
+                parenths.push('(');
             } else if (aim.getType() == TokenType.R_PARENTHESIS) {
-                brackets.pop();
+                parenths.pop();
             }
         }
         end = iterator.nextIndex();
@@ -891,6 +944,15 @@ public class GramParser {
                 tokenPtr--;
             }
     }
+
+    /**
+     * 小括号不匹配异常
+     */
+    private void parenthMismatchException(int lineNum) {
+        ifSuccess = false;
+        errInfoBuffer.append("Parenthesis mismatch at line ").append(lineNum).append("\n");
+    }
+
 
 
     public List<TreeNode> getTreeNodes() {
