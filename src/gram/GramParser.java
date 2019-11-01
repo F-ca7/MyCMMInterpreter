@@ -492,8 +492,9 @@ public class GramParser {
                     if (operatorStack.empty()) {
                         operatorStack.push(tokenToTreeNode(token));
                         isPrevOperator = true;
+                        isNegative = false;
                     } else {
-                        // 取得前一个操作符与当前操作符
+                        // 取得前一个操作符
                         TreeNode preOperator = operatorStack.peek();
 
                         if (token.getType()==TokenType.MINUS && isPrevOperator) {
@@ -501,6 +502,7 @@ public class GramParser {
                             isNegative = !isNegative;
                             continue;
                         }
+                        // 取得当前操作符
                         TreeNode curOperator = tokenToTreeNode(token);
 
                         if (priorityCompare(preOperator, curOperator)) {
@@ -510,6 +512,7 @@ public class GramParser {
                             if (!checkTokenLParenth(next)) {
                                 // 下一个token不是左括号
                                 curOperand = tokenToTreeNode(next, isNegative);
+                                // 消耗掉负号
                                 isNegative = false;
                             } else {
                                 // 下一个token是左括号
@@ -533,6 +536,8 @@ public class GramParser {
                             preOperator.right = operand2;
                             operandStack.push(preOperator);
                             operatorStack.push(curOperator);
+                            // 当前操作符还没有消耗掉
+                            isPrevOperator = true;
                         }
 
                     }
