@@ -36,7 +36,7 @@ public class Interpreter {
     private Scanner scanner = new Scanner(System.in);
 
     public static void main(String[] args) {
-        Lexer lexer = new Lexer("E:\\desktop\\MyCMMInterpreter\\test.cmm");
+        Lexer lexer = new Lexer("E:\\desktop\\MyCMMInterpreter\\test3.cmm");
         lexer.loadSourceCode();
         lexer.loadTokenList();
         GramParser parser = new GramParser(lexer);
@@ -162,12 +162,32 @@ public class Interpreter {
      */
     private void print(Quadruple code) {
         Symbol symbol = getSymbol(code.dest);
-        if(symbol.getType() == SymValueType.INT) {
-            System.out.println(symbol.getIntValue());
-        } else if(symbol.getType() == SymValueType.REAL) {
-            System.out.println(symbol.getRealValue());
-        } else if (symbol.getType() == SymValueType.CHAR) {
-            System.out.printf("%c\n", symbol.getIntValue());
+        switch (symbol.getType()) {
+            case INT_ARRAY_ELEMENT:
+            case INT:
+                System.out.println(symbol.getIntValue());
+                break;
+            case REAL_ARRAY_ELEMENT:
+            case REAL:
+                System.out.println(symbol.getRealValue());
+                break;
+            case CHAR:
+                System.out.printf("%c\n", symbol.getIntValue());
+                break;
+            case INT_ARRAY:
+                Integer[] arrInt =  Arrays.stream(symbol.getIntArray()).boxed().toArray(Integer[]::new);
+                System.out.println(arrToString(arrInt));
+                break;
+            case REAL_ARRAY:
+                Double[] arrReal =  Arrays.stream(symbol.getRealArray()).boxed().toArray(Double[]::new);
+                System.out.println(arrToString(arrReal));
+                break;
+            case TRUE:
+                System.out.println("true");
+                break;
+            case FALSE:
+                System.out.println("false");
+                break;
         }
         nextInstruction();
     }
@@ -521,6 +541,23 @@ public class Interpreter {
             }
         }
     }
+
+    /**
+     * 格式化输出数组
+     */
+    private  <E> String arrToString(E[] arr) {
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append("[");
+        if (arr.length > 1) {
+            for (int i=0; i<arr.length-1; i++) {
+                stringBuilder.append(arr[i]).append(", ");
+            }
+            stringBuilder.append(arr[arr.length-1]);
+        }
+        stringBuilder.append("]");
+        return stringBuilder.toString();
+    }
+
 
     /**
      * 重复声明异常
