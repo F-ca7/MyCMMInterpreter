@@ -490,9 +490,18 @@ public class GramParser {
                 } else if (checkTokenArithmeticOperator(token)) {
                     // token是运算符
                     if (operatorStack.empty()) {
-                        operatorStack.push(tokenToTreeNode(token));
-                        isPrevOperator = true;
-                        isNegative = false;
+                        if (token.getType()== TokenType.MINUS && operandStack.empty()) {
+                            // 可能一开始就是负号
+                            isNegative = true;
+                        } else if (operandStack.empty()) {
+                            // 算术表达式一开始不能有其他符号
+                            wrongArithmeticExpException(token.getLineNum());
+                            // todo
+                            return null;
+                        } else {
+                            operatorStack.push(tokenToTreeNode(token));
+                            isPrevOperator = true;
+                        }
                     } else {
                         // 取得前一个操作符
                         TreeNode preOperator = operatorStack.peek();
@@ -956,6 +965,14 @@ public class GramParser {
     private void parenthMismatchException(int lineNum) {
         ifSuccess = false;
         errInfoBuffer.append("Parenthesis mismatch at line ").append(lineNum).append("\n");
+    }
+
+    /**
+     * 算术表达式错误异常
+     */
+    private void wrongArithmeticExpException(int lineNum) {
+        ifSuccess = false;
+        errInfoBuffer.append("Wrong arithmetic expression at line ").append(lineNum).append("\n");
     }
 
 
