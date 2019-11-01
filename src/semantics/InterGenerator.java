@@ -452,11 +452,19 @@ class InterGenerator {
         switch (operand1.getType()) {
             case INT_LITERAL:
                 code.firstOperandType = OperandType.INT_LITERAL;
-                code.firstOperand = new IntOperand(operand2.getIntValue());
+                if (operand1.isNegative()) {
+                    code.firstOperand = new IntOperand(-operand1.getIntValue());
+                } else {
+                    code.firstOperand = new IntOperand(operand1.getIntValue());
+                }
                 break;
             case REAL_LITERAL:
                 code.firstOperandType = OperandType.REAL_LITERAL;
-                code.firstOperand = new RealOperand(operand2.getRealValue());
+                if (operand1.isNegative()) {
+                    code.firstOperand = new RealOperand(-operand1.getRealValue());
+                } else {
+                    code.firstOperand = new RealOperand(operand1.getRealValue());
+                }
                 break;
             case IDENTIFIER:
                 code.firstOperandType = OperandType.IDENTIFIER;
@@ -466,7 +474,11 @@ class InterGenerator {
         switch (operand2.getType()) {
             case INT_LITERAL:
                 code.secondOperandType = OperandType.INT_LITERAL;
-                code.secondOperand = new IntOperand(operand2.getIntValue());
+                if (operand2.isNegative()) {
+                    code.secondOperand = new IntOperand(-operand2.getIntValue());
+                } else {
+                    code.secondOperand = new IntOperand(operand2.getIntValue());
+                }
                 if(code.operation.equals(CodeConstant.DIV) &&
                         ((IntOperand)code.secondOperand).intLiteral == 0) {
                     divByZeroException();
@@ -474,7 +486,11 @@ class InterGenerator {
                 break;
             case REAL_LITERAL:
                 code.secondOperandType = OperandType.REAL_LITERAL;
-                code.secondOperand = new RealOperand(operand2.getRealValue());
+                if (operand2.isNegative()) {
+                    code.secondOperand = new RealOperand(-operand2.getRealValue());
+                } else {
+                    code.secondOperand = new RealOperand(operand2.getRealValue());
+                }
                 if(code.operation.equals(CodeConstant.DIV) &&
                         Math.abs(((RealOperand)code.secondOperand).realLiteral) < 1e-10) {
                     divByZeroException();
@@ -495,16 +511,21 @@ class InterGenerator {
 
     /**
      * 生成访问数组中间代码
+     * 用临时变量来存储要访问的数组元素
      */
     private String genArrayAccess(Stack<TreeNode> stack) throws SemanticException {
         Quadruple code = new Quadruple();
         code.operation = CodeConstant.ARR_ACC;
         // 索引值
         TreeNode operand1 = stack.pop();
+        if (operand1.getType()==TreeNodeType.INT_LITERAL && operand1.getIntValue()<0) {
+            // 索引小于0
+            arrayIndexOutOfBoundsException(operand1.getIntValue());
+        }
         // 数组名
         TreeNode operand2 = stack.pop();
-
-        handleOperandRight(code,operand1);
+        // 索引值为右操作数
+        handleOperandRight(code, operand1);
         if(operand2.getType() == TreeNodeType.IDENTIFIER) {
             code.firstOperandType = OperandType.IDENTIFIER;
             code.firstOperand.name = operand2.getSymbolName();
@@ -583,6 +604,14 @@ class InterGenerator {
     private void divByZeroException() throws SemanticException {
         throw new SemanticException("Illegal operation! Cannot divide by zero!");
     }
+
+    /**
+     * 数组索引越界
+     */
+    private void arrayIndexOutOfBoundsException(int index) throws SemanticException{
+        throw new SemanticException("Array index is out of bounds: "+index);
+    }
+
 
     /**
      * 返回格式化后的中间代码
