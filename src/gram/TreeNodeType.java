@@ -16,6 +16,35 @@ public enum TreeNodeType {
     REAL_DECLARATION,
     // 字符型变量声明,同上
     CHAR_DECLARATION,
+    // 空类型
+    VOID,
+
+    /**
+     * 函数
+     * left存储函数签名, right存储函数实现语句块
+     *
+     */
+    FUNCTION,
+    /**
+     * 函数签名
+     * left存储参数类型列表, right存储返回值
+     */
+    FUNC_SIGN,
+    /**
+     * 参数类型列表
+     */
+    ARGS,
+    /**
+     * 返回语句
+     * left存储返回值/标识符
+     */
+    RETURN,
+
+    /**
+     * 函数调用
+     * left存储参数, right存储函数实现语句块
+     */
+    FUNC_CALL,
 
     /**
      * left存储数组标识符, right存储数组大小
@@ -89,8 +118,6 @@ public enum TreeNodeType {
     //标识符
     IDENTIFIER,
 
-    // 函数声明
-    FUNC_DECLARATION,
     // 空语句
     EMPTY,
     NULL,

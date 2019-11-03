@@ -18,6 +18,9 @@ public enum TokenType {
     FOR,
     CONTINUE,
     BREAK,
+    VOID,
+    FUNC,       // func, 函数定义开始
+    RETURN,
 
     // 算术运算符
     PLUS,       // +

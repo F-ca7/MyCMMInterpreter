@@ -20,13 +20,21 @@ class CodeConstant {
     // 退出语句块
     static final String OUT = "out";
 
+    // 参数入栈
+    static final String ARG = "arg";
+    // 调用函数
+    static final String CALL = "call";
+    // 函数返回
+    static final String RETURN = "ret";
+
     static final String INT = "int";
     static final String REAL = "real";
     static final String INT_ARR = "int[]";
     static final String REAL_ARR = "real[]";
-    static final String ASSIGN = "assign";
     static final String CHAR = "char";
+    static final String VOID = "void";
 
+    static final String ASSIGN = "assign";
     static final String PLUS = "+";
     static final String MINUS = "-";
     static final String MUL = "*";
@@ -40,9 +48,9 @@ class CodeConstant {
     // 数组访问
     static final String ARR_ACC = "arr_acc";
 
-    // 入口代码
+    // 进入语句块代码
     static final Quadruple inCode = new Quadruple(CodeConstant.IN);
-    // 出口代码
+    // 退出语句块代码
     static final Quadruple outCode = new Quadruple(CodeConstant.OUT);;
 
 }

@@ -27,6 +27,9 @@ public class TreeNode {
     private LinkedList<TreeNode> statementBlock = new LinkedList<>();
     // bool条件表达式
     private TreeNode condition;
+    // 参数列表
+    // type为参数类型, symbolName为形参名
+    private List<TreeNode> argList;
 
 
     public String getSymbolName () {
@@ -77,6 +80,14 @@ public class TreeNode {
         return statementBlock;
     }
 
+    public List<TreeNode> getArgList() {
+        return argList;
+    }
+
+    public void setArgList(List<TreeNode> argList) {
+        this.argList = argList;
+    }
+
 
     /**
      * 层次遍历语法树的结果
@@ -98,6 +109,7 @@ public class TreeNode {
             return "null";
         }
         while (!queue.isEmpty()) {
+            // 层次遍历
             TreeNode node = queue.poll();
             toBeList--;
             levelResult.append(node.toStringBuilder(curLevel)).append("\n");
@@ -164,7 +176,30 @@ public class TreeNode {
             case IDENTIFIER:
                 stringBuilder.append(", name=").append(symbolName);
                 break;
-            case FUNC_DECLARATION:
+            case FUNCTION:
+                stringBuilder.append(", func=").append(symbolName);
+                break;
+            case ARGS:
+                stringBuilder.append(", args={");
+                for (TreeNode node:argList) {
+                    stringBuilder.append(node.type).append(':').append(node.symbolName).append(' ');
+                }
+                stringBuilder.append("}");
+                break;
+            case RETURN:
+                stringBuilder.append(", ret=");
+                switch (left.getType()) {
+                    case IDENTIFIER:
+                        stringBuilder.append(left.getSymbolName());
+                        break;
+                    case INT_LITERAL:
+                    case CHAR_DECLARATION:
+                        stringBuilder.append(left.getIntValue());
+                        break;
+                    case REAL_LITERAL:
+                        stringBuilder.append(left.getRealValue());
+                        break;
+                }
                 break;
         }
         stringBuilder.append("}");

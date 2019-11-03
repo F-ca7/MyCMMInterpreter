@@ -1,13 +1,13 @@
 package semantics;
 
+import exception.GramException;
 import exception.SemanticException;
 import gram.GramParser;
 import gram.TreeNode;
 import gram.TreeNodeType;
+import lex.Lexer;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Stack;
+import java.util.*;
 
 /**
  * @description 中间代码生成器
@@ -28,6 +28,51 @@ class InterGenerator {
     private int loopLevel = 0;
     // 记录break的位置回填
     private Stack<Integer> breakIndex = new Stack<>();
+    // 主函数入口
+    private int entryPoint = 0;
+    // 返回值类型
+    // 由于函数不能嵌套, 可以作为全局的变量
+    private TreeNodeType returnType;
+    // 参数名前缀
+    private final String ARG_PREFIX = "%arg";
+    // 根据函数名找到入口地址
+    Map<String, Integer> funcInstrMap = new HashMap<>();
+    // 根据函数名找到参数类型列表, 可供调用时比对
+    Map<String, List<TreeNode>> funcArgTypeMap = new HashMap<>();
+
+
+
+    public static void main(String[] args) {
+        Lexer lexer = new Lexer("E:\\desktop\\MyCMMInterpreter\\test_func.cmm");
+        lexer.loadSourceCode();
+        lexer.loadTokenList();
+        GramParser parser = new GramParser(lexer);
+        try {
+            parser.startParse();
+        } catch (GramException e) {
+            System.out.println("语法分析错误！" + e.getMessage());
+            return;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        InterGenerator generator = new InterGenerator(parser);
+        try {
+            generator.start();
+            // 输出函数入口地址
+            System.out.println("函数入口地址");
+            System.out.println(generator.funcInstrMap);
+            // 输出函数参数类型
+            System.out.println("函数参数类型");
+            System.out.println(generator.funcArgTypeMap);
+            // 输出中间代码-四元式表示
+            System.out.println(generator.getFormattedCodes());
+        }catch (SemanticException e){
+            System.out.println("语义分析错误！" + e.getMessage());
+        }
+
+    }
+
 
     InterGenerator(GramParser parser) {
         this.parser = parser;
@@ -48,17 +93,20 @@ class InterGenerator {
                 throw new SemanticException("Unreachable statements after break!");
             }
             switch (node.getType()) {
+                case FUNCTION:
+                    genFunction(node);
+                    break;
                 case INT_DECLARATION:
                 case REAL_DECLARATION:
                 case CHAR_DECLARATION:
-                    genDeclaration(node);
+                    genDeclaration(node, Collections.emptyMap());
                     break;
                 case INT_ARRAY_DECLARATION:
                 case REAL_ARRAY_DECLARATION:
                     genArrDeclaration(node);
                     break;
                 case ASSIGN:
-                    genAssign(node);
+                    genAssign(node, Collections.emptyMap());
                     break;
                 case IF:
                     genIf(node);
@@ -90,17 +138,169 @@ class InterGenerator {
         }
     }
 
+    /**
+     * 对于每个语法树按顺序生成四元式表示
+     * @param argMap 函数参数的替换
+     */
+    private void generate(List<TreeNode> nodes, Map<String, String>  argMap) throws SemanticException {
+        for(TreeNode node:nodes) {
+            if (!breakIndex.empty()) {
+                throw new SemanticException("Unreachable statements after break!");
+            }
+            switch (node.getType()) {
+                case INT_DECLARATION:
+                case REAL_DECLARATION:
+                case CHAR_DECLARATION:
+                    genDeclaration(node, argMap);
+                    break;
+                case INT_ARRAY_DECLARATION:
+                case REAL_ARRAY_DECLARATION:
+                    genArrDeclaration(node);
+                    break;
+                case ASSIGN:
+                    genAssign(node, argMap);
+                    break;
+                case IF:
+                    genIf(node);
+                    break;
+                case WHILE:
+                    genWhile(node);
+                    break;
+                case PRINT:
+                    genPrint(node);
+                    break;
+                case SCAN  :
+                    genScan(node);
+                    break;
+                case STATEMENT_BLOCK:
+                    genStatementBlock(node);
+                    break;
+                case BREAK:
+                    if(loopLevel==0) {
+                        // 不能在非循环内break
+                        throw new SemanticException("Using break outside loop!");
+                    } else {
+                        genBreak();
+                    }
+                    break;
+                case EMPTY:
+                    break;
+                case RETURN:
+                    genReturn(node);
+                    break;
+                default:
+                    throw new SemanticException("Unknown statement!");
+            }
+        }
+    }
+
+
+    /**
+     * 生成函数的中间代码
+     */
+    private void genFunction(TreeNode node) throws SemanticException {
+        String funcName = node.getSymbolName();
+        // 保存函数入口地址
+        funcInstrMap.put(funcName, codes.size());
+        // 左结点：函数签名
+        TreeNode signNode = node.left;
+        TreeNode argNode = signNode.left;
+        // 设置全局的返回参数变量, 用于返回值判断
+        returnType = signNode.right.getType();
+        // 获取参数
+        List<TreeNode> argList = argNode.getArgList();
+        // 保存函数参数类型
+        funcArgTypeMap.put(funcName, argList);
+        Map<String, String> argMap = new HashMap<>();
+        // 如 x->arg0; y->arg1
+        for (int i=0; i<argList.size(); i++) {
+            argMap.put(argList.get(i).getSymbolName(), ARG_PREFIX + i);
+        }
+
+        // 右结点: 实现语句块
+        genFuncStatementBlock(node.right, argMap);
+    }
+
+    /**
+     * 生成函数语句块
+     * ret语句在执行期间会自动跳出语句块层次
+     * 不需要加入out中间代码
+     */
+    private void genFuncStatementBlock(TreeNode node, Map<String, String> argMap) throws SemanticException {
+        codes.add(CodeConstant.inCode);
+        generate(node.getStatements(), argMap);
+    }
+
+    /**
+     * 生成返回语句的中间代码
+     */
+    private void genReturn(TreeNode node) throws SemanticException {
+        Quadruple code = new Quadruple();
+        code.operation = CodeConstant.RETURN;
+        TreeNode left = node.left;
+        switch (left.getType()) {
+            case IDENTIFIER:
+                // 标识符在运行期再判断类型匹配
+                code.firstOperandType = OperandType.IDENTIFIER;
+                code.firstOperand.name = left.getSymbolName();
+                break;
+            case VOID:
+                if (returnType != TreeNodeType.VOID){
+                    returnTypeException(TreeNodeType.VOID);
+                }
+                break;
+            case INT_LITERAL:
+                if (returnType != TreeNodeType.INT_DECLARATION){
+                    returnTypeException(TreeNodeType.INT_DECLARATION);
+                }
+                code.firstOperandType = OperandType.INT_LITERAL;
+                code.firstOperand = new IntOperand(left.getIntValue());
+                break;
+            case REAL_LITERAL:
+                if (returnType != TreeNodeType.REAL_DECLARATION){
+                    returnTypeException(TreeNodeType.REAL_DECLARATION);
+                }
+                code.firstOperandType = OperandType.REAL_LITERAL;
+                code.firstOperand = new RealOperand(left.getRealValue());
+                break;
+            case CHAR_DECLARATION:
+                if (returnType != TreeNodeType.CHAR_DECLARATION){
+                    returnTypeException(TreeNodeType.CHAR_DECLARATION);
+                }
+                code.firstOperandType = OperandType.INT_LITERAL;
+                code.firstOperand = new IntOperand(left.getIntValue());
+                break;
+
+        }
+        codes.add(code);
+    }
+
+
+
+    /**
+     * 生成函数调用的中间代码
+     */
+    private void genFunctionCall(TreeNode node) {
+        // 左结点：函数签名
+        TreeNode signNode = node.left;
+        TreeNode argNode = signNode.left;
+        TreeNode retNode = signNode.right;
+        // 参数使用
+        Quadruple argCode;
+
+        // 右结点: 实现语句块
+    }
 
 
     /**
      * 生成break的中间代码
      */
     private void genBreak() {
-        Quadruple code1 = new Quadruple();
+        Quadruple code = new Quadruple();
         // 要多加一次出语句块
         codes.add(CodeConstant.outCode);
-        code1.operation = CodeConstant.JMP;
-        codes.add(code1);
+        code.operation = CodeConstant.JMP;
+        codes.add(code);
         // 具体跳出循环的位置等待回填
         breakIndex.push(codes.size()-1);
     }
@@ -108,17 +308,21 @@ class InterGenerator {
     /**
      * 生成算术表达式的中间代码
      */
-    private String genArithmetic(TreeNode node) throws SemanticException{
+    private String genArithmetic(TreeNode node, Map<String, String> argMap) throws SemanticException{
         // 返回算术表达式结果的变量名
         List<TreeNode> postTraversalResult = new ArrayList<>();
-        postTraverseArithExp(node,postTraversalResult);
+        postTraverseArithExp(node, postTraversalResult);
         Stack<TreeNode> stack = new Stack<>();
-        for (TreeNode every: postTraversalResult) {
-            switch (every.getType()) {
+        for (TreeNode opNode: postTraversalResult) {
+            switch (opNode.getType()) {
                 case INT_LITERAL:
                 case REAL_LITERAL:
                 case IDENTIFIER:
-                    stack.push(every);
+                    stack.push(opNode);
+                    if (argMap.containsKey(opNode.getSymbolName())) {
+                        // 是参数，替换为参数名
+                        opNode.setSymbolName(argMap.get(opNode.getSymbolName()));
+                    }
                     break;
                 case PLUS:
                     arithOpToCode(stack, TreeNodeType.PLUS);
@@ -151,6 +355,16 @@ class InterGenerator {
     }
 
     /**
+     * 生成语句块的中间代码
+     * @param argMap 需要被替换的参数名的键值对map
+     */
+    private void genStatementBlock(TreeNode node, Map<String, String> argMap) throws SemanticException {
+        codes.add(CodeConstant.inCode);
+        generate(node.getStatements(), argMap);
+        codes.add(CodeConstant.outCode);
+    }
+
+    /**
      * 生成关系表达式的中间代码
      */
     private String genRelationalExp(TreeNode node) throws SemanticException {
@@ -176,7 +390,7 @@ class InterGenerator {
                 break;
 
         }
-        handleOperandLeft(code, node.left);
+        handleOperandLeft(code, node.left, Collections.emptyMap());
         handleOperandRight(code, node.right);
         code.dest = getNextTempName();
         codes.add(code);
@@ -186,11 +400,15 @@ class InterGenerator {
     /**
      * 生成变量声明的中间代码
      */
-    private void genDeclaration(TreeNode node) throws SemanticException {
+    private void genDeclaration(TreeNode node, Map<String, String>  argMap) throws SemanticException {
         Quadruple code = new Quadruple();
+        if (argMap.containsKey(node.left.getSymbolName())) {
+            // 和参数重名, 重定义
+            redeclarationException(node.left.getSymbolName());
+        }
         if(node.right != null) {
             // 声明的同时进行了赋值
-            handleOperandLeft(code, node.right);
+            handleOperandLeft(code, node.right, argMap);
         } else {
             // 默认赋值为0
             switch (node.getType()) {
@@ -240,7 +458,7 @@ class InterGenerator {
             case MULTIPLY:
             case DIVIDE:
                 code.firstOperandType = OperandType.IDENTIFIER;
-                code.firstOperand.name = genArithmetic(node.right);
+                code.firstOperand.name = genArithmetic(node.right, Collections.emptyMap());
                 break;
             case ARRAY_ACCESS:
                 code.firstOperandType = OperandType.IDENTIFIER;
@@ -254,7 +472,7 @@ class InterGenerator {
     /**
      * 生成赋值操作的中间代码
      */
-    private void genAssign(TreeNode node) throws SemanticException {
+    private void genAssign(TreeNode node, Map<String, String> argMap) throws SemanticException {
         Quadruple code = new Quadruple();
         if(node.left.getType() == TreeNodeType.ARRAY_ACCESS) {
             Stack<TreeNode> stack = new Stack<>();
@@ -265,7 +483,7 @@ class InterGenerator {
             code.dest = node.left.getSymbolName();
         }
         code.operation = CodeConstant.ASSIGN;
-        handleOperandLeft(code, node.right);
+        handleOperandLeft(code, node.right, argMap);
         codes.add(code);
     }
 
@@ -422,8 +640,8 @@ class InterGenerator {
         if(arithmeticExpression == null) {
             return;
         }
-        postTraverseArithExp(arithmeticExpression.left,result);
-        postTraverseArithExp(arithmeticExpression.right,result);
+        postTraverseArithExp(arithmeticExpression.left, result);
+        postTraverseArithExp(arithmeticExpression.right, result);
         result.add(arithmeticExpression);
     }
 
@@ -539,7 +757,7 @@ class InterGenerator {
     /**
      * 生成左操作数的中间代码
      */
-    private void handleOperandLeft (Quadruple code, TreeNode node) throws SemanticException {
+    private void handleOperandLeft (Quadruple code, TreeNode node, Map<String, String>  argMap) throws SemanticException {
         switch (node.getType()) {
             case INT_LITERAL:
                 code.firstOperandType = OperandType.INT_LITERAL;
@@ -551,7 +769,13 @@ class InterGenerator {
                 break;
             case IDENTIFIER:
                 code.firstOperandType = OperandType.IDENTIFIER;
-                code.firstOperand.name = node.getSymbolName();
+                if (argMap.containsKey(node.getSymbolName())) {
+                    // 是参数，替换为参数名
+                    code.firstOperand.name = argMap.get(node.getSymbolName());
+                } else {
+                    code.firstOperand.name = node.getSymbolName();
+                }
+
                 break;
             case ARRAY_ACCESS:
                 code.firstOperandType = OperandType.IDENTIFIER;
@@ -559,7 +783,7 @@ class InterGenerator {
                 break;
             default:
                 code.firstOperandType = OperandType.IDENTIFIER;
-                code.firstOperand.name = genArithmetic(node);
+                code.firstOperand.name = genArithmetic(node, argMap);
         }
     }
 
@@ -586,7 +810,7 @@ class InterGenerator {
                 break;
             default:
                 code.secondOperandType = OperandType.IDENTIFIER;
-                code.secondOperand.name = genArithmetic(node);
+                code.secondOperand.name = genArithmetic(node, Collections.emptyMap());
         }
     }
 
@@ -606,11 +830,32 @@ class InterGenerator {
     }
 
     /**
+     * 重定义异常
+     */
+    private void redeclarationException(String name) throws SemanticException {
+        throw new SemanticException("Redeclaration of "+name);
+    }
+
+
+
+    /**
      * 数组索引越界
      */
     private void arrayIndexOutOfBoundsException(int index) throws SemanticException{
         throw new SemanticException("Array index is out of bounds: "+index);
     }
+
+
+    /**
+     * 返回值类型错误
+     * @param retType 实际的返回值类型
+     * @throws SemanticException
+     */
+    private void returnTypeException(TreeNodeType retType) throws SemanticException{
+        String err = String.format("Return value expected %s, found %s", returnType, retType);
+        throw new SemanticException(err);
+    }
+
 
 
     /**
@@ -623,4 +868,5 @@ class InterGenerator {
         }
         return stringBuilder.toString();
     }
+
 }

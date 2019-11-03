@@ -27,6 +27,11 @@ public class GramParser {
     // 是否成功
     private boolean ifSuccess = true;
 
+    // 待定义的函数
+    private List<FuncDeclaration> toBeDefinedFuncs = new LinkedList<>();
+    // 已定义的函数
+    private List<FuncDeclaration> definedFuncs = new LinkedList<>();
+
     private HashSet<TokenType> FIRST_STATEMENT = new HashSet<TokenType>(){{
         add(TokenType.IDENTIFIER);
         add(TokenType.IF);
@@ -39,6 +44,15 @@ public class GramParser {
         add(TokenType.SEMICOLON);
     }};
 
+    /**
+     * 函数签名的Follow集合
+     */
+    private HashSet<TokenType> FOLLOW_FUNCTION_ARGS = new HashSet<TokenType>(){{
+        add(TokenType.L_BRACE);
+        add(TokenType.L_PARENTHESIS);
+    }};
+
+
 
 
 
@@ -48,7 +62,7 @@ public class GramParser {
 
 
     public static void main(String[] args) {
-        Lexer lexer = new Lexer("E:\\desktop\\MyCMMInterpreter\\test_gram_2.cmm");
+        Lexer lexer = new Lexer("E:\\desktop\\MyCMMInterpreter\\test_func.cmm");
         lexer.loadSourceCode();
         lexer.loadTokenList();
         GramParser parser = new GramParser(lexer);
@@ -87,12 +101,15 @@ public class GramParser {
      */
     public void startParse() throws GramException {
         while (true) {
-            TreeNode node = parseStatement(false,true);
+            //TreeNode node = parseStatement(false, true);
+            TreeNode node = parseFunction();
             if(node.getType() == TreeNodeType.NULL) {
                 break;
             }
+            treeNodes.add(node);
+            getNextToken();
         }
-        System.out.println("语法分析结束");
+         System.out.println("语法分析结束");
         if (!ifSuccess) {
             // 报告错误
             System.out.println("语法分析错误！");
@@ -104,14 +121,149 @@ public class GramParser {
                 System.out.println(TreeNode.getLevelOrderString(treeNodes.get(i)));
             }
         }
+
+    }
+
+    /**
+     * 解析函数
+     */
+    private TreeNode parseFunction() throws GramException {
+        TreeNode node = new TreeNode();
+        node.setType(TreeNodeType.NULL);
+        if (curToken == null) {
+            getNextToken();
+        }
+        if (!checkToken(TokenType.FUNC)) {
+            // 不符合函数定义
+            return node;
+        }
+        // 函数定义
+        node.setType(TreeNodeType.FUNCTION);
+        // 函数名
+        getNextToken();
+        String funcName = curToken.getStringValue();
+        node.setSymbolName(funcName);
+        // 左结点: 函数签名
+        node.left = parseFuncSignature();
+        // 右结点: 具体函数实现的语句块
+        // todo 考虑为封装成函数语句块
+        node.right = parseStatementBlock(true);
+        definedFuncs.add(new FuncDeclaration(funcName, node.left.left.getArgList(), node.left.right.getType()));
+        return node;
+    }
+
+    /**
+     * 解析函数签名
+     */
+    private TreeNode parseFuncSignature() {
+        TreeNode node = new TreeNode();
+        node.setType(TreeNodeType.FUNC_SIGN);
+        // 左结点: 参数列表
+        TreeNode left =  new TreeNode();
+        left.setType(TreeNodeType.ARGS);
+        left.setArgList(parseArgList(true));
+        node.left = left;
+        // 右结点: 返回值
+        getNextToken();
+        TreeNode right = new TreeNode();
+        if(curToken.getType()!= TokenType.EOF) {
+            switch (curToken.getType()) {
+                case VOID:
+                    right.setType(TreeNodeType.VOID);
+                    break;
+                case INT:
+                    right.setType(TreeNodeType.INT_DECLARATION);
+                    break;
+                case REAL:
+                    right.setType(TreeNodeType.REAL_DECLARATION);
+                    break;
+                case CHAR:
+                    right.setType(TreeNodeType.CHAR_DECLARATION);
+                    break;
+                default:
+                    // 其他类型token不能作为返回值
+                    wrongReturnValueTypeException(curToken.getLineNum());
+                    break;
+            }
+        } else {
+            unexpectedEOFException(curToken.getLineNum());
+        }
+        node.right = right;
+        return node;
+    }
+
+    /**
+     * 解析参数列表
+     * 从左括号开始
+     * @param needNext 是否需要下一个token
+     */
+    private List<TreeNode> parseArgList(boolean needNext) {
+        List<TreeNode> treeNodeList = new ArrayList<>();
+        if (needNext) {
+            matchTokenNext(TokenType.L_PARENTHESIS, true);
+        } else {
+            matchToken(TokenType.L_PARENTHESIS, true);
+        }
+        getNextToken();
+        TreeNode node;
+        // 参数类型和参数名
+        loop:
+        while (curToken.getType() != TokenType.R_PARENTHESIS) {
+            node = new TreeNode();
+            switch (curToken.getType()) {
+                case INT:
+                    node.setType(TreeNodeType.INT_DECLARATION);
+                    break;
+                case REAL:
+                    node.setType(TreeNodeType.REAL_DECLARATION);
+                    break;
+                case CHAR:
+                    node.setType(TreeNodeType.CHAR_DECLARATION);
+                    break;
+                default:
+                    wrongArgTypeException(curToken.getLineNum());
+                    break loop;
+            }
+            if (curToken.getType() == TokenType.EOF) {
+                expectedException(TokenType.R_BRACE, curToken.getType(), curToken.getLineNum(), false);
+                break;
+            }
+            // 设置形参名
+            getNextToken();
+            if (curToken.getType()== TokenType.IDENTIFIER) {
+                node.setSymbolName(curToken.getStringValue());
+                treeNodeList.add(node);
+            } else {
+                wrongArgTypeException(curToken.getLineNum());
+                break;
+            }
+            // 再匹配一个逗号
+            getNextToken();
+            if (curToken.getType()!=TokenType.COMMA) {
+                if (curToken.getType() == TokenType.R_PARENTHESIS) {
+                    // 结束
+                    break;
+                } else {
+                    // 缺少逗号, 进入错误恢复
+                    recover(FIRST_STATEMENT, FOLLOW_FUNCTION_ARGS);
+                }
+            } else {
+                // 是逗号, 还有下一个参数
+                getNextToken();
+            }
+        }
+        matchToken(TokenType.R_PARENTHESIS, true);
+        return treeNodeList;
     }
 
     /**
      * 解析单条语句
-     * @param isRecursive 是否是递归调用
+     * @param isRecursive 是否处于在递归调用中
+     *                    是的话，得到的结点不会加入最终的List中，而会直接返回
+     *                    不是的话，得到的结点先加入最终的List中，再返回
      * @param needNext 是否需要下一个token
      */
-    private TreeNode parseStatement(boolean isRecursive,boolean needNext) throws  GramException {
+    private TreeNode parseStatement(boolean isRecursive, boolean needNext) throws  GramException {
         if(needNext || curToken == null ) {
             getNextToken();
         }
@@ -152,6 +304,9 @@ public class GramParser {
                 case CONTINUE:
                     node = parseContinue();
                     break;
+                case RETURN:
+                    node = parseReturn();
+                    break;
                 case SEMICOLON:
                     // 空语句
                     node.setType(TreeNodeType.EMPTY);
@@ -166,6 +321,42 @@ public class GramParser {
             treeNodes.add(node);
         }
 
+        return node;
+    }
+
+    /**
+     * 解析返回语句
+     */
+    private TreeNode parseReturn() {
+        TreeNode node = new TreeNode();
+        node.setType(TreeNodeType.RETURN);
+        // left: 返回值或变量
+        TreeNode left = new TreeNode();
+        left.setType(TreeNodeType.VOID);
+        getNextToken();
+        // 如果return; 默认返回值类型是void
+        switch (curToken.getType()) {
+            case IDENTIFIER:
+                left.setType(TreeNodeType.IDENTIFIER);
+                left.setSymbolName(curToken.getStringValue());
+                break;
+            case INT_LITERAL:
+                left.setType(TreeNodeType.INT_LITERAL);
+                left.setIntValue(curToken.getIntValue());
+                break;
+            case REAL_LITERAL:
+                left.setType(TreeNodeType.REAL_LITERAL);
+                left.setRealValue(curToken.getRealValue());
+                break;
+                // todo 若返回一个表达式
+            default:
+
+        }
+        node.left = left;
+        if (curToken.getType()==TokenType.SEMICOLON) {
+            tokenPtr--;
+        }
+        matchTokenNext(TokenType.SEMICOLON, true);
         return node;
     }
 
@@ -368,7 +559,6 @@ public class GramParser {
 
         return node;
     }
-
 
 
     /**
@@ -703,11 +893,6 @@ public class GramParser {
     private void matchToken(TokenType type) {
         if(curToken.getType() != type) {
             expectedException(type, curToken.getType(), curToken.getLineNum(), false);
-//            String err = String.format("Expected %s, found %s at line %d",
-//                    type, curToken.getType(), curToken.getLineNum());
-//            ifSuccess = false;
-//            errInfoBuffer.append(err).append("\n");
-//            //throw new GramException(err);
         }
     }
 
@@ -835,7 +1020,6 @@ public class GramParser {
         return node;
     }
 
-
     /**
      * 比较两个运算符优先级
      * @param operator1 运算符1
@@ -883,7 +1067,17 @@ public class GramParser {
         return token.getType() == TokenType.L_PARENTHESIS;
     }
 
+    /**
+     * 检查词法单元是否为参数类型
+     * @param token 待检查词法单元
+     */
+    private boolean checkTokenArgType(Token token) {
+        TokenType type = token.getType();
+        return type == TokenType.INT
+                || type == TokenType.REAL
+                || type == TokenType.CHAR;
 
+    }
 
     /**
      * 解析数组
@@ -975,8 +1169,29 @@ public class GramParser {
         errInfoBuffer.append("Wrong arithmetic expression at line ").append(lineNum).append("\n");
     }
 
+    /**
+     * 文件尾异常
+     */
+    private void unexpectedEOFException(int lineNum) {
+        ifSuccess = false;
+        errInfoBuffer.append("Unexpected EOF at line ").append(lineNum).append("\n");
+    }
 
+    /**
+     * 返回值类型错误
+     */
+    private void wrongReturnValueTypeException(int lineNum) {
+        ifSuccess = false;
+        errInfoBuffer.append("Wrong return value type at line ").append(lineNum).append("\n");
+    }
 
+    /**
+     * 函数参数类型错误
+     */
+    private void wrongArgTypeException(int lineNum) {
+        ifSuccess = false;
+        errInfoBuffer.append("Wrong argument type at line ").append(lineNum).append("\n");
+    }
     public List<TreeNode> getTreeNodes() {
         return treeNodes;
     }

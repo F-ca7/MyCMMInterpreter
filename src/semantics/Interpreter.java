@@ -4,6 +4,7 @@ import exception.ExecutionException;
 import exception.GramException;
 import exception.SemanticException;
 import gram.GramParser;
+import gram.TreeNode;
 import lex.Lexer;
 import symbols.SymValueType;
 import symbols.Symbol;
@@ -27,16 +28,24 @@ public class Interpreter {
     private int blockLevel = 0;
     // 每一层代码块的临时变量表
     private Map<Integer, List<String>> tempVars = new HashMap<>();
-
+    // 函数返回地址栈
+    private Stack<Integer> retAddrStack = new Stack<>();
+    // 根据函数名找到入口地址
+    private Map<String, Integer> funcInstrMap;
+    // 根据函数名找到参数类型列表, 可供调用时比对
+    private Map<String, List<TreeNode>> funcArgTypeMap;
+    // main函数出口地址，即执行结束
+    private final int MAIN_OUT_ADDR = -1;
     // 操作数是整数还是实数
     private boolean isFirstOperandInt;
     private boolean isSecondOperandInt;
-
+    // 跳转条件
     private Symbol condition;
+    // 命令行输入
     private Scanner scanner = new Scanner(System.in);
 
     public static void main(String[] args) {
-        Lexer lexer = new Lexer("E:\\desktop\\MyCMMInterpreter\\test3.cmm");
+        Lexer lexer = new Lexer("E:\\desktop\\MyCMMInterpreter\\test.cmm");
         lexer.loadSourceCode();
         lexer.loadTokenList();
         GramParser parser = new GramParser(lexer);
@@ -60,7 +69,7 @@ public class Interpreter {
         // 输出中间代码-四元式表示
         System.out.println(generator.getFormattedCodes());
         // 将中间代码输入解释器执行
-        Interpreter interpreter = new Interpreter(generator.getCodes());
+        Interpreter interpreter = new Interpreter(generator);
         try {
             interpreter.run();
         } catch (ExecutionException e) {
@@ -71,16 +80,29 @@ public class Interpreter {
         System.out.println("解释器执行完毕");
     }
 
-
-    public Interpreter(List<Quadruple> codes) {
+    /**
+     * 初始化工作
+     */
+    public Interpreter(InterGenerator generator) {
         List<String> level0 = new ArrayList<>();
-        tempVars.put(0,level0);
-        this.codes = codes;
+        tempVars.put(0, level0);
+        this.codes = generator.getCodes();
+        this.funcArgTypeMap = generator.funcArgTypeMap;
+        this.funcInstrMap = generator.funcInstrMap;
+        retAddrStack.push(MAIN_OUT_ADDR);
     }
 
-    public void run() throws ExecutionException {
-        // 执行每一行中间代码
+    /**
+     * 执行每一行中间代码
+     */
+    private void run() throws ExecutionException {
+        // 从main函数开始执行
+        instrIndex = funcInstrMap.get("main");
         while(instrIndex < codes.size()) {
+            if (instrIndex == MAIN_OUT_ADDR) {
+                // main执行结束, 退出
+                return;
+            }
             Quadruple code = codes.get(instrIndex);
             switch (code.operation) {
                 case CodeConstant.JMP_WITH_CONDITION:
@@ -130,11 +152,15 @@ public class Interpreter {
                 case CodeConstant.ASSIGN:
                     assign(code);
                     break;
+                case CodeConstant.RETURN:
+                    ret(code);
                 default:
                     throw new ExecutionException("Unexpected code!");
             }
         }
     }
+
+
 
     /**
      * 无条件跳转
@@ -235,6 +261,7 @@ public class Interpreter {
         int index = 0;
         switch (code.secondOperandType) {
             case IDENTIFIER:
+                // 索引是标识符
                 index = symbolTable.getSymbol(code.secondOperand.name).getIntValue();
                 break;
             case INT_LITERAL:
@@ -474,6 +501,17 @@ public class Interpreter {
     }
 
     /**
+     * 函数返回
+     * @param code
+     */
+    private void ret(Quadruple code) {
+        blockLevel--;
+        instrIndex = retAddrStack.pop();
+    }
+
+
+
+    /**
      * 根据符号名取出对应符号
      */
     private Symbol getSymbol(String name) {
@@ -494,6 +532,8 @@ public class Interpreter {
     private void nextInstruction() {
         instrIndex++;
     }
+
+
 
 
     /**

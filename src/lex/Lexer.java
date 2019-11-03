@@ -72,10 +72,13 @@ public class Lexer {
         RESERVED_WORDS.put("char", TokenType.CHAR.ordinal());
         RESERVED_WORDS.put("continue", TokenType.CONTINUE.ordinal());
         RESERVED_WORDS.put("break", TokenType.BREAK.ordinal());
+        RESERVED_WORDS.put("void", TokenType.VOID.ordinal());
+        RESERVED_WORDS.put("func", TokenType.FUNC.ordinal());
+        RESERVED_WORDS.put("return", TokenType.RETURN.ordinal());
     }
 
     public static void main(String[] args) {
-        Lexer lexer = new Lexer("Y:\\desktop\\MyCMMInterpreter\\test_gram_1.cmm");
+        Lexer lexer = new Lexer("E:\\desktop\\MyCMMInterpreter\\test_func.cmm");
         lexer.loadSourceCode();
         Token token = new Token();
         do {
