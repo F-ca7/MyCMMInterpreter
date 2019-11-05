@@ -78,7 +78,7 @@ public class Lexer {
     }
 
     public static void main(String[] args) {
-        Lexer lexer = new Lexer("E:\\desktop\\MyCMMInterpreter\\test_func.cmm");
+        Lexer lexer = new Lexer("Y:\\desktop\\MyCMMInterpreter\\test_func_call1.cmm");
         lexer.loadSourceCode();
         Token token = new Token();
         do {
@@ -284,14 +284,24 @@ public class Lexer {
         String value = stringBuilder.toString();
         stringBuilder.delete(0, stringBuilder.length());
         if(RESERVED_WORDS.containsKey(value)) {
+            // 是关键字
             token.setType(values[RESERVED_WORDS.get(value)]);
         } else {
             if (value.length() > VAR_NAME_LIMIT) {
                 // 变量名过长
                 varNameTooLongException(token);
             }
-            token.setType(TokenType.IDENTIFIER);
-            token.setStringValue(value);
+            // 往后看一个判断是不是函数调用
+            readChar();
+            if (curCh == '(') {
+                // 后面紧跟左括号, 是函数调用
+                token.setType(TokenType.FUNC_CALL);
+                token.setStringValue(value);
+            } else {
+                token.setType(TokenType.IDENTIFIER);
+                token.setStringValue(value);
+            }
+            pointer--;
         }
     }
 

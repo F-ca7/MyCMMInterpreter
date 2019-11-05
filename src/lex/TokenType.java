@@ -54,11 +54,15 @@ public enum TokenType {
     // 字面量
     INT_LITERAL,    // 整形
     REAL_LITERAL,   // 实数
+
     IDENTIFIER,     // 标识符
+    FUNC_CALL,      // 函数调用
 
     // 注释
     SINGLE_LINE_COMMENT,    // 单行注释
     MULTIPLE_LINE_COMMENT,  // 多行注释
+
+
 
     // 其他
     EOF,            // 文件尾

@@ -43,7 +43,7 @@ class InterGenerator {
 
 
     public static void main(String[] args) {
-        Lexer lexer = new Lexer("E:\\desktop\\MyCMMInterpreter\\test_func.cmm");
+        Lexer lexer = new Lexer("Y:\\desktop\\MyCMMInterpreter\\test_func.cmm");
         lexer.loadSourceCode();
         lexer.loadTokenList();
         GramParser parser = new GramParser(lexer);

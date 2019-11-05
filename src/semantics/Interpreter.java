@@ -29,6 +29,7 @@ public class Interpreter {
     // 每一层代码块的临时变量表
     private Map<Integer, List<String>> tempVars = new HashMap<>();
     // 函数返回地址栈
+    // 每次调用call时压栈
     private Stack<Integer> retAddrStack = new Stack<>();
     // 根据函数名找到入口地址
     private Map<String, Integer> funcInstrMap;
@@ -45,7 +46,7 @@ public class Interpreter {
     private Scanner scanner = new Scanner(System.in);
 
     public static void main(String[] args) {
-        Lexer lexer = new Lexer("E:\\desktop\\MyCMMInterpreter\\test.cmm");
+        Lexer lexer = new Lexer("Y:\\desktop\\MyCMMInterpreter\\test_func.cmm");
         lexer.loadSourceCode();
         lexer.loadTokenList();
         GramParser parser = new GramParser(lexer);
@@ -97,9 +98,16 @@ public class Interpreter {
      */
     private void run() throws ExecutionException {
         // 从main函数开始执行
-        instrIndex = funcInstrMap.get("main");
+        if (funcInstrMap.containsKey("main")) {
+            instrIndex = funcInstrMap.get("main");
+        } else {
+            noMainFuncException();
+            return;
+        }
+
         while(instrIndex < codes.size()) {
             if (instrIndex == MAIN_OUT_ADDR) {
+                System.out.println("Main exited.");
                 // main执行结束, 退出
                 return;
             }
@@ -154,6 +162,7 @@ public class Interpreter {
                     break;
                 case CodeConstant.RETURN:
                     ret(code);
+                    break;
                 default:
                     throw new ExecutionException("Unexpected code!");
             }
@@ -626,5 +635,12 @@ public class Interpreter {
      */
     private void arrayIndexOutOfBoundsException(int index) throws ExecutionException{
         throw new ExecutionException("Array index is out of bounds: "+index);
+    }
+
+    /**
+     * 找不到主函数
+     */
+    private void noMainFuncException() throws ExecutionException{
+        throw new ExecutionException("No main function!");
     }
 }

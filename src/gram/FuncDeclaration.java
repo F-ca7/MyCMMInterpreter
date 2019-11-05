@@ -19,6 +19,10 @@ public class FuncDeclaration {
     public FuncDeclaration() {
     }
 
+    public FuncDeclaration(String name) {
+        this.name = name;
+    }
+
     public FuncDeclaration(String name, List<TreeNode> argListType, TreeNodeType retType) {
         this.name = name;
         this.argListType = argListType;
@@ -26,16 +30,15 @@ public class FuncDeclaration {
     }
 
     /**
-     * 判断函数名和函数签名是一致的
+     * 判断函数名是一致的
+     * 不用判断函数签名
      */
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         FuncDeclaration that = (FuncDeclaration) o;
-        return name.equals(that.name) &&
-                argListType.equals(that.argListType) &&
-                retType == that.retType;
+        return name.equals(that.name);
     }
 
     @Override

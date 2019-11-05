@@ -31,9 +31,13 @@ public enum TreeNodeType {
      */
     FUNC_SIGN,
     /**
-     * 参数类型列表
+     * 定义时参数类型列表
      */
-    ARGS,
+    DEF_ARGS,
+    /**
+     * 调用时参数类型列表
+     */
+    CALL_ARGS,
     /**
      * 返回语句
      * left存储返回值/标识符

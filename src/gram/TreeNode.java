@@ -27,7 +27,7 @@ public class TreeNode {
     private LinkedList<TreeNode> statementBlock = new LinkedList<>();
     // bool条件表达式
     private TreeNode condition;
-    // 参数列表
+    // 参数列表，可用于定义 或 调用
     // type为参数类型, symbolName为形参名
     private List<TreeNode> argList;
 
@@ -179,7 +179,8 @@ public class TreeNode {
             case FUNCTION:
                 stringBuilder.append(", func=").append(symbolName);
                 break;
-            case ARGS:
+            case DEF_ARGS:
+                // 打印定义函数的参数
                 stringBuilder.append(", args={");
                 for (TreeNode node:argList) {
                     stringBuilder.append(node.type).append(':').append(node.symbolName).append(' ');
@@ -200,6 +201,18 @@ public class TreeNode {
                         stringBuilder.append(left.getRealValue());
                         break;
                 }
+                break;
+            case FUNC_CALL:
+                stringBuilder.append(", func_call=").append(symbolName).append("; args=");
+                stringBuilder.append(left);
+                break;
+            case CALL_ARGS:
+                // 打印调用函数的参数
+                stringBuilder.append(", call_args={");
+                for (TreeNode node:argList) {
+                    stringBuilder.append(node.type).append(' ');
+                }
+                stringBuilder.append("}");
                 break;
         }
         stringBuilder.append("}");
