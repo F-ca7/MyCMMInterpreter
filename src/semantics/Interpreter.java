@@ -5,11 +5,10 @@ import exception.GramException;
 import exception.SemanticException;
 import gram.GramParser;
 import gram.TreeNode;
+import gram.TreeNodeType;
 import lex.Lexer;
 import symbols.SymValueType;
 import symbols.Symbol;
-import symbols.SymbolTable;
-
 import java.util.*;
 
 /**
@@ -22,21 +21,21 @@ public class Interpreter {
     private int instrIndex = 0;
     // 四元组形式的中间代码
     private List<Quadruple> codes;
-    // 符号表
-    private SymbolTable symbolTable = new SymbolTable();
     // 代码块层级
     private int blockLevel = 0;
     // 每一层代码块的临时变量表
     private Map<Integer, List<String>> tempVars = new HashMap<>();
-    // 函数返回地址栈
-    // 每次调用call时压栈
-    private Stack<Integer> retAddrStack = new Stack<>();
     // 根据函数名找到入口地址
     private Map<String, Integer> funcInstrMap;
-    // 根据函数名找到参数类型列表, 可供调用时比对
-    private Map<String, List<TreeNode>> funcArgTypeMap;
     // main函数出口地址，即执行结束
     private final int MAIN_OUT_ADDR = -1;
+    // 函数栈帧
+    private Stack<Frame> stackFrames = new Stack<>();
+    // 参数列表
+    private List<TreeNode> argsList = new ArrayList<>();
+    // 返回值
+    private Symbol retValue = new Symbol(CodeConstant.RETURN_VALUE);
+
     // 操作数是整数还是实数
     private boolean isFirstOperandInt;
     private boolean isSecondOperandInt;
@@ -46,7 +45,7 @@ public class Interpreter {
     private Scanner scanner = new Scanner(System.in);
 
     public static void main(String[] args) {
-        Lexer lexer = new Lexer("Y:\\desktop\\MyCMMInterpreter\\test_func.cmm");
+        Lexer lexer = new Lexer("E:\\desktop\\MyCMMInterpreter\\test_func_call2.cmm");
         lexer.loadSourceCode();
         lexer.loadTokenList();
         GramParser parser = new GramParser(lexer);
@@ -58,7 +57,6 @@ public class Interpreter {
         } catch (Exception e) {
             e.printStackTrace();
         }
-
         InterGenerator generator = new InterGenerator(parser);
         try {
             generator.start();
@@ -88,9 +86,10 @@ public class Interpreter {
         List<String> level0 = new ArrayList<>();
         tempVars.put(0, level0);
         this.codes = generator.getCodes();
-        this.funcArgTypeMap = generator.funcArgTypeMap;
         this.funcInstrMap = generator.funcInstrMap;
-        retAddrStack.push(MAIN_OUT_ADDR);
+        // 出口栈帧
+        Frame outFrame = new Frame(MAIN_OUT_ADDR);
+        stackFrames.push(outFrame);
     }
 
     /**
@@ -163,9 +162,66 @@ public class Interpreter {
                 case CodeConstant.RETURN:
                     ret(code);
                     break;
+                case CodeConstant.ARG:
+                    loadArg(code);
+                    break;
+                case CodeConstant.CALL:
+                    call(code);
+                    break;
                 default:
                     throw new ExecutionException("Unexpected code!");
             }
+        }
+    }
+
+    /**
+     * 装载参数
+     */
+    private void loadArg(Quadruple code) {
+        TreeNode arg = new TreeNode();
+        switch (code.firstOperandType) {
+            case INT_LITERAL:
+                arg.setType(TreeNodeType.INT_LITERAL);
+                arg.setIntValue(((IntOperand)code.firstOperand).intLiteral);
+                break;
+            case REAL_LITERAL:
+                arg.setType(TreeNodeType.REAL_LITERAL);
+                arg.setRealValue(((RealOperand)code.firstOperand).realLiteral);
+                break;
+            case IDENTIFIER:
+                Symbol tmpSymbol = stackFrames.peek().localVarTable.getSymbol(code.firstOperand.name);
+                if (tmpSymbol.getType() == SymValueType.INT) {
+                    arg.setType(TreeNodeType.INT_LITERAL);
+                    arg.setIntValue(tmpSymbol.getIntValue());
+                } else if(tmpSymbol.getType() == SymValueType.REAL) {
+                    arg.setType(TreeNodeType.REAL_LITERAL);
+                    arg.setRealValue(tmpSymbol.getRealValue());
+                }
+                break;
+        }
+        argsList.add(arg);
+        nextInstruction();
+    }
+
+    /**
+     * 调用函数
+     */
+    private void call(Quadruple code) throws ExecutionException {
+        Frame frame = new Frame();
+        // 返回地址为当前的下一条语句
+        frame.retAddr = instrIndex+1;
+        // 已经按顺序排列的参数
+        frame.argStack = argsList;
+        argsList = new ArrayList<>();
+        // 跳转到指定位置
+        String callName = code.firstOperand.name;
+        if (!funcInstrMap.containsKey(callName)) {
+            // 找不到指定位置
+            undefinedFuncException(callName);
+        } else {
+            // 压入栈帧
+            stackFrames.push(frame);
+            instrIndex = funcInstrMap.get(callName);
         }
     }
 
@@ -256,7 +312,8 @@ public class Interpreter {
      * 退出语句块
      */
     private void out() {
-        symbolTable.deleteSymbols(tempVars.get(blockLevel));
+        // 删除当前栈帧局部变量表的临时符号
+        stackFrames.peek().localVarTable.deleteSymbols(tempVars.get(blockLevel));
         tempVars.remove(blockLevel);
         blockLevel--;
         nextInstruction();
@@ -271,14 +328,14 @@ public class Interpreter {
         switch (code.secondOperandType) {
             case IDENTIFIER:
                 // 索引是标识符
-                index = symbolTable.getSymbol(code.secondOperand.name).getIntValue();
+                index = stackFrames.peek().localVarTable.getSymbol(code.secondOperand.name).getIntValue();
                 break;
             case INT_LITERAL:
                 index = ((IntOperand)(code.secondOperand)).intLiteral;
                 break;
         }
 
-        Symbol array = symbolTable.getSymbol(code.firstOperand.name);
+        Symbol array = stackFrames.peek().localVarTable.getSymbol(code.firstOperand.name);
         if (index < 0) {
             // 越下界
             arrayIndexOutOfBoundsException(index);
@@ -421,30 +478,30 @@ public class Interpreter {
      * 赋值
      */
     private void assign(Quadruple code) throws ExecutionException {
-        Symbol left = symbolTable.getSymbol(code.dest);
-        if (left == null) {
+        Symbol target = stackFrames.peek().localVarTable.getSymbol(code.dest);
+        if (target == null) {
             // 变量还没有被声明
             // 不能赋值
             varNotDeclaredException(code.dest);
         }
-        double right = getFirstOperand(code);
+        double source = getFirstOperand(code);
         Symbol array;
-        if(left.getType() == SymValueType.INT_ARRAY_ELEMENT) {
-            array = symbolTable.getSymbol(left.getArrName());
-            array.getIntArray()[left.getIndex()] = (int)right;
-            left.setIntValue((int)right);
-        } else if(left.getType() == SymValueType.REAL_ARRAY_ELEMENT) {
-            array = symbolTable.getSymbol(left.getArrName());
-            array.getRealArray()[left.getIndex()] = right;
-            left.setRealValue(right);
+        if(target.getType() == SymValueType.INT_ARRAY_ELEMENT) {
+            array = stackFrames.peek().localVarTable.getSymbol(target.getArrName());
+            array.getIntArray()[target.getIndex()] = (int)source;
+            target.setIntValue((int)source);
+        } else if(target.getType() == SymValueType.REAL_ARRAY_ELEMENT) {
+            array = stackFrames.peek().localVarTable.getSymbol(target.getArrName());
+            array.getRealArray()[target.getIndex()] = source;
+            target.setRealValue(source);
         } else {
-            switch (left.getType()) {
+            switch (target.getType()) {
                 case INT:
                     // 以变量类型进行类型转换
-                    left.setIntValue((int)right);
+                    target.setIntValue((int)source);
                     break;
                 case REAL:
-                    left.setRealValue(right);
+                    target.setRealValue(source);
                     break;
             }
         }
@@ -511,11 +568,32 @@ public class Interpreter {
 
     /**
      * 函数返回
-     * @param code
      */
     private void ret(Quadruple code) {
         blockLevel--;
-        instrIndex = retAddrStack.pop();
+        // 弹出栈帧
+        Frame curFrame = stackFrames.pop();
+        // 设置返回地址
+        instrIndex = curFrame.retAddr;
+        if (code.firstOperandType != null) {
+            // 有返回值
+            // 设置返回值
+            switch (code.firstOperandType) {
+                case INT_LITERAL:
+                    retValue.setType(SymValueType.INT);
+                    retValue.setIntValue(((IntOperand)code.firstOperand).intLiteral);
+                    break;
+                case REAL_LITERAL:
+                    retValue.setType(SymValueType.REAL);
+                    retValue.setRealValue(((RealOperand)code.firstOperand).realLiteral);
+                    break;
+                case IDENTIFIER:
+                    // 返回变量要进行取值
+                    retValue = curFrame .localVarTable.getSymbol(code.firstOperand.name);
+
+            }
+        }
+
     }
 
 
@@ -524,14 +602,14 @@ public class Interpreter {
      * 根据符号名取出对应符号
      */
     private Symbol getSymbol(String name) {
-        return symbolTable.getSymbol(name);
+        return stackFrames.peek().localVarTable.getSymbol(name);
     }
 
     /**
      * 在当前块层次添加临时变量
      */
     private void addTempSymbol(Symbol symbol)  {
-        symbolTable.addSymbol(symbol);
+        stackFrames.peek().localVarTable.addSymbol(symbol);
         tempVars.get(blockLevel).add(symbol.getName());
     }
 
@@ -553,11 +631,36 @@ public class Interpreter {
             isFirstOperandInt = true;
             return (double)((IntOperand)code.firstOperand).intLiteral;
         } else if(code.firstOperandType == OperandType.REAL_LITERAL) {
+            isFirstOperandInt = false;
             return ((RealOperand)code.firstOperand).realLiteral;
         } else {
+            if (code.firstOperand.name.startsWith("%arg")) {
+                // 是参数，在当前栈帧中获取
+                int argIndex = Integer.parseInt(code.firstOperand.name.substring(4));
+                TreeNode arg = stackFrames.peek().argStack.get(argIndex);
+                switch (arg.getType()) {
+                    case INT_LITERAL:
+                        isFirstOperandInt = true;
+                        return (double)arg.getIntValue();
+                    case REAL_LITERAL:
+                        isFirstOperandInt = false;
+                        return arg.getRealValue();
+                }
+            }
+            if (code.firstOperand.name.equals(CodeConstant.RETURN_VALUE)) {
+                // 是返回值
+                switch (retValue.getType()) {
+                    case INT:
+                        isFirstOperandInt = true;
+                        return (double) retValue.getIntValue();
+                    case REAL:
+                        isFirstOperandInt = false;
+                        return retValue.getRealValue();
+                }
+            }
+
             // 是临时变量，在符号表中查找
-            Symbol symbol = symbolTable.getSymbol(code.firstOperand.name);
-            // todo 查找不到符号后的处理
+            Symbol symbol = stackFrames.peek().localVarTable.getSymbol(code.firstOperand.name);
             if (symbol == null) {
                 symbolNotFoundException(code.firstOperand.name);
             }
@@ -574,20 +677,51 @@ public class Interpreter {
     /**
      * 从四元组中获得第二个操作数
      */
-    private double getSecondOperand(Quadruple code) {
+    private double getSecondOperand(Quadruple code) throws ExecutionException {
         if(code.secondOperandType == OperandType.INT_LITERAL) {
             isSecondOperandInt = true;
             return (double)((IntOperand)code.secondOperand).intLiteral;
         } else if(code.secondOperandType == OperandType.REAL_LITERAL) {
             return ((RealOperand)code.secondOperand).realLiteral;
         } else {
-            Symbol symbol = symbolTable.getSymbol(code.secondOperand.name);
-            if(symbol.getType() == SymValueType.INT||symbol.getType() == SymValueType.REAL_ARRAY_ELEMENT) {
+            if (code.secondOperand.name.startsWith("%arg")) {
+                // 是参数，在当前栈帧中获取
+                int argIndex = Integer.parseInt(code.secondOperand.name.substring(4));
+                TreeNode arg = stackFrames.peek().argStack.get(argIndex);
+                switch (arg.getType()) {
+                    case INT_LITERAL:
+                        isSecondOperandInt = true;
+                        return (double)arg.getIntValue();
+                    case REAL_LITERAL:
+                        isSecondOperandInt = false;
+                        return arg.getRealValue();
+                }
+
+            }
+            if (code.firstOperand.name.equals(CodeConstant.RETURN_VALUE)) {
+                // 是返回值
+                switch (retValue.getType()) {
+                    case INT:
+                        isFirstOperandInt = true;
+                        return (double) retValue.getIntValue();
+                    case REAL:
+                        isFirstOperandInt = false;
+                        return retValue.getRealValue();
+                }
+            }
+            // 是临时变量，在符号表中查找
+            Symbol symbol = stackFrames.peek().localVarTable.getSymbol(code.firstOperand.name);
+            if (symbol == null) {
+                symbolNotFoundException(code.firstOperand.name);
+            }
+            if (symbol.getType() == SymValueType.INT ||
+                    symbol.getType() == SymValueType.INT_ARRAY_ELEMENT) {
                 isSecondOperandInt = true;
-                return (double)symbol.getIntValue();
-            } else {
+                return (double) symbol.getIntValue();
+            } else{
                 return symbol.getRealValue();
             }
+
         }
     }
 
@@ -604,6 +738,7 @@ public class Interpreter {
             stringBuilder.append(arr[arr.length-1]);
         }
         stringBuilder.append("]");
+
         return stringBuilder.toString();
     }
 
@@ -642,5 +777,12 @@ public class Interpreter {
      */
     private void noMainFuncException() throws ExecutionException{
         throw new ExecutionException("No main function!");
+    }
+
+    /**
+     * 调用未定义的函数
+     */
+    private void undefinedFuncException(String callName) throws ExecutionException {
+        throw new ExecutionException("Undefined function "+callName);
     }
 }

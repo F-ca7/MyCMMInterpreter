@@ -13,7 +13,7 @@ import java.util.Map;
  **/
 public class SymbolTable {
     // 内部用hash表实现
-    private final Map<String,Symbol> map = new HashMap<>();;
+    private final Map<String, Symbol> map = new HashMap<>();;
 
     /**
      * 添加符号至表中

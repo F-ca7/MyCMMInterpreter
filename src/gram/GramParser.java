@@ -18,7 +18,7 @@ public class GramParser {
     private Lexer lexer;
     // 当前token
     private Token curToken;
-    // 一条语句对应一棵语法树
+    // 一条函数对应一棵语法树
     private List<TreeNode> treeNodes = new ArrayList<>();
     // token指针
     private int tokenPtr = -1;
@@ -62,7 +62,8 @@ public class GramParser {
 
 
     public static void main(String[] args) {
-        Lexer lexer = new Lexer("Y:\\desktop\\MyCMMInterpreter\\test_func_call1.cmm");
+        Lexer lexer = new Lexer("E:\\desktop\\MyCMMInterpreter\\test_func_call2.cmm");
+//        Lexer lexer = new Lexer("Y:\\desktop\\MyCMMInterpreter\\test_gram_1.cmm");
         lexer.loadSourceCode();
         lexer.loadTokenList();
         GramParser parser = new GramParser(lexer);
@@ -109,7 +110,14 @@ public class GramParser {
             treeNodes.add(node);
             getNextToken();
         }
-         System.out.println("语法分析结束");
+        if (!toBeDefinedFuncs.isEmpty()) {
+            for (FuncDeclaration func:toBeDefinedFuncs) {
+                undefinedFuncException(func.name);
+            }
+
+        }
+
+        System.out.println("语法分析结束");
         if (!ifSuccess) {
             // 报告错误
             System.out.println("语法分析错误！");
@@ -118,11 +126,12 @@ public class GramParser {
             System.out.println("语法分析成功");
             for(int i = 0;i<treeNodes.size(); i++) {
                 System.out.printf("第%d棵语法树:\n", i+1);
-                System.out.println(TreeNode.getLevelOrderString(treeNodes.get(i)));
+                System.out.println(TreeNode.getLevelOrderString(treeNodes.get(i), 0));
             }
         }
 
     }
+
 
     /**
      * 解析函数
@@ -155,8 +164,15 @@ public class GramParser {
         } else {
             // 添加到已定义函数列表中
             definedFuncs.add(funcDeclaration);
+            // 如果对应的有未定义函数, 弹出
+            // 要删除所有相同的
+            toBeDefinedFuncs.removeIf(funcDeclaration1 -> funcDeclaration1.equals(funcDeclaration));
         }
-
+        List<TreeNode> stmts = node.right.getStatements();
+        if (stmts.size()==0 || stmts.get(stmts.size()-1).getType()!= TreeNodeType.RETURN) {
+            // 最后缺少return语句
+            noReturnException(funcName);
+        }
         return node;
     }
 
@@ -325,7 +341,9 @@ public class GramParser {
                     node = parseFuncCall();
                     break;
                 default:
-                    throw new GramException("Unexpected token "+ curToken+ "at line " + curToken.getLineNum());
+                    // token异常, 直接错误恢复
+                    // unexpectedTokenException(curToken);
+                    recover(FIRST_STATEMENT, FOLLOW_STATEMENT);
             }
         }
         if(!isRecursive && node.getType()!= TreeNodeType.NULL && node.getType() != TreeNodeType.EMPTY) {
@@ -336,6 +354,7 @@ public class GramParser {
 
         return node;
     }
+
 
     /**
      * 解析函数调用
@@ -381,7 +400,7 @@ public class GramParser {
         }
 
         // 左结点: 参数列表
-        TreeNode left =  new TreeNode();
+        TreeNode left = new TreeNode();
         left.setType(TreeNodeType.CALL_ARGS);
         left.setArgList(argList);
         node.left = left;
@@ -485,15 +504,23 @@ public class GramParser {
         boolean isArray = false;
         matchTokenNext(TokenType.IDENTIFIER);
         TreeNode left = new TreeNode();
-        // 左孩子设为标识符的名字
+        // 左结点设为标识符的名字
         left.setType(TreeNodeType.IDENTIFIER);
         left.setSymbolName(curToken.getStringValue());
         node.left = left;
         getNextToken();
         if(checkToken(TokenType.ASSIGN)) {
             // 赋值语句
-            // 右边是算术表达式
-            node.right = parseArithmeticExpression();
+            // 右边是算术表达式 或 函数名
+            // 需要向后查看一个token
+            getNextToken();
+            if (curToken.getType() == TokenType.FUNC_CALL) {
+                // 函数调用的返回
+                node.right = parseFuncCall();
+            } else {
+                tokenPtr--;
+                node.right = parseArithmeticExpression();
+            }
             matchToken(TokenType.SEMICOLON, true);
         } else if(checkToken(TokenType.L_BRACKET)) {
             // 如果后面接的是[
@@ -566,16 +593,36 @@ public class GramParser {
         TreeNode left = new TreeNode();
         List<Token> tokens = new ArrayList<>();
         left.setType(TreeNodeType.IDENTIFIER);
+        if (curToken.getType() != TokenType.IDENTIFIER) {
+            // 不能作为左值
+            leftValueException(curToken.getLineNum());
+            // 进入错误恢复
+            recover(FOLLOW_STATEMENT, FIRST_STATEMENT);
+            return node;
+        }
         left.setSymbolName(curToken.getStringValue());
+
         tokens.add(curToken);
         getNextToken();
         switch (curToken.getType()) {
             case ASSIGN:
+                // 左值是标识符
                 node.left = left;
-                node.right = parseArithmeticExpression();
+                // 右边可能是函数调用的返回, 可能是算术表达式
+                // 需要向后查看一个token
+                getNextToken();
+                if (curToken.getType() == TokenType.FUNC_CALL) {
+                    // 函数调用的返回
+                    node.right = parseFuncCall();
+                } else {
+                    tokenPtr--;
+                    node.right = parseArithmeticExpression();
+                }
+
                 matchToken(TokenType.SEMICOLON, true);
                 break;
             case L_BRACKET:
+                // 左值是数组访问
                 do {
                     tokens.add(curToken);
                     getNextToken();
@@ -728,6 +775,10 @@ public class GramParser {
                             brackets.push('[');
                             Token aim;
                             while (!brackets.empty()) {
+                                if (!iterator.hasNext()) {
+                                    parenthMismatchException(token.getLineNum());
+                                    return null;
+                                }
                                 aim = iterator.next();
                                 if (aim.getType() == TokenType.L_BRACKET) {
                                     brackets.push('[');
@@ -812,7 +863,7 @@ public class GramParser {
                     TreeNode operand = parseExpInParenthesis(iterator,tokens);
                     operandStack.push(operand);
                 } else {
-                    throw new GramException("Invalid arithmetic expression at line " + token.getLineNum());
+                    return null;
                 }
             } else  {
                 // token处理完毕
@@ -1237,6 +1288,17 @@ public class GramParser {
     }
 
     /**
+     * token异常错误
+     * @param curToken
+     */
+    private void unexpectedTokenException(Token curToken) {
+        ifSuccess = false;
+        errInfoBuffer.append("Unexpected token ").append(curToken).append("at line ").append(curToken.getLineNum()).append("\n");;
+    }
+
+
+
+    /**
      * 文件尾异常
      */
     private void unexpectedEOFException(int lineNum) {
@@ -1253,6 +1315,16 @@ public class GramParser {
     }
 
     /**
+     * 不能作为左值错误
+     * @param lineNum
+     */
+    private void leftValueException(int lineNum) {
+        ifSuccess = false;
+        errInfoBuffer.append("Cannot be left value at line ").append(lineNum).append("\n");
+    }
+
+
+    /**
      * 函数参数类型错误
      */
     private void wrongArgTypeException(int lineNum) {
@@ -1267,6 +1339,21 @@ public class GramParser {
         ifSuccess = false;
         errInfoBuffer.append("Redefinition of function ").append(funcName).append("\n");
     }
+
+    /**
+     * 函数未定义错误
+     */
+    private void undefinedFuncException(String funcName) {
+        ifSuccess = false;
+        errInfoBuffer.append("Undefined function ").append(funcName).append("\n");
+    }
+
+    private void noReturnException(String funcName) {
+        ifSuccess = false;
+        errInfoBuffer.append("No return in function ").append(funcName).append("\n");
+    }
+
+
 
     public List<TreeNode> getTreeNodes() {
         return treeNodes;

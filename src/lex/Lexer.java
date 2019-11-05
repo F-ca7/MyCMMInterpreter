@@ -78,7 +78,7 @@ public class Lexer {
     }
 
     public static void main(String[] args) {
-        Lexer lexer = new Lexer("Y:\\desktop\\MyCMMInterpreter\\test_func_call1.cmm");
+        Lexer lexer = new Lexer("Y:\\desktop\\MyCMMInterpreter\\test_lex_err4.cmm");
         lexer.loadSourceCode();
         Token token = new Token();
         do {
@@ -397,7 +397,7 @@ public class Lexer {
      * 判断是多行注释, 单行注释, 还是除号
      * @param token 待解析类型的token
      */
-    private void parseSplash(Token token) {
+    private void parseSplash(Token token) throws LexException {
         if(curCh == '*') {
             // 多行注释
             while (true) {
@@ -408,8 +408,19 @@ public class Lexer {
                         token.setType(TokenType.MULTIPLE_LINE_COMMENT);
                         break;
                     }
+                    if(curCh==END_OF_TEXT) {
+                        commentNotMatchException();
+                        break;
+                    }
+
+                }else {
+                    if(curCh==END_OF_TEXT) {
+                        commentNotMatchException();
+                        break;
+                    }
                 }
             }
+            // todo 闭合注释
         } else if(curCh == '/') {
             // 单行行注释, 直接读到行尾
             readToLineEnd();
@@ -421,6 +432,8 @@ public class Lexer {
             pointer--;
         }
     }
+
+
 
     /**
      * 跳过空白符
@@ -474,7 +487,7 @@ public class Lexer {
         // 中途可能会换行，如注释
         token.setLineNum(lineNum);
         clearStrBuilder();
-        throw new LexException("Illegal number literal at line "+ token.getLineNum());
+        throw new LexException("Illegal numeric literal at line "+ token.getLineNum());
     }
 
 
@@ -485,12 +498,24 @@ public class Lexer {
         throw new LexException("IDENTIFIER cannot start with digit at line "+ token.getLineNum());
     }
 
+    /**
+     * 变量名过长错误
+     */
     private void varNameTooLongException(Token token) throws LexException {
         // 中途可能会换行，如注释
         token.setLineNum(lineNum);
         clearStrBuilder();
         throw new LexException("Variable name too long at line "+ token.getLineNum());
     }
+
+    /**
+     * 注释未闭合
+     */
+    private void commentNotMatchException() throws LexException {
+        clearStrBuilder();
+        throw new LexException("Multiline comment is not closed at line "+ lineNum);
+    }
+
 
     /**
      * 清空构造中的字符串缓冲区

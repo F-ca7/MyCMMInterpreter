@@ -92,7 +92,7 @@ public class TreeNode {
     /**
      * 层次遍历语法树的结果
      */
-    public static String getLevelOrderString(TreeNode root) {
+    public static String getLevelOrderString(TreeNode root, int level) {
         StringBuilder stringBuilder = new StringBuilder();
         // 每一层的结果
         StringBuilder levelResult = new StringBuilder();
@@ -102,7 +102,7 @@ public class TreeNode {
         // 这层还需要加入结果的结点个数
         int toBeList = 1;
         // 当前层
-        int curLevel= 0;
+        int curLevel= level;
         if (root!=null) {
             queue.offer(root);
         }else {
@@ -125,8 +125,6 @@ public class TreeNode {
                 curLevel++;
                 // 该层添加完毕，可附加到总结果中
                 stringBuilder.append(levelResult);
-                stringBuilder.append("\n");
-
                 levelResult.delete(0, levelResult.length());
                 toBeList = nextLevel;
                 nextLevel = 0;
@@ -151,12 +149,12 @@ public class TreeNode {
             case STATEMENT_BLOCK:
                 stringBuilder.append(", stmtBlock={").append("\n");
                 for (int i = 0; i<statementBlock.size(); i++){
-                    appendTabs(stringBuilder, level);
+                    appendTabs(stringBuilder, level+1);
                     stringBuilder.append(i+1).append(". ");
-                    stringBuilder.append(statementBlock.get(i));
+                    stringBuilder.append(getLevelOrderString(statementBlock.get(i), level));
                     stringBuilder.append("\n");
                 }
-                appendTabs(stringBuilder, level);
+                appendTabs(stringBuilder, level+1);
                 stringBuilder.append("}\n");
                 appendTabs(stringBuilder, level);
                 stringBuilder.append("}");
@@ -165,6 +163,22 @@ public class TreeNode {
                 stringBuilder.append(", value=").append(intValue);
                 if (isNegative) {
                     stringBuilder.append(", negative");
+                }
+                break;
+            case ASSIGN:
+                stringBuilder.append(", ").append(left.symbolName).append('=');
+                switch (right.type) {
+                    case INT_LITERAL:
+                        stringBuilder.append(right.intValue);
+                        if (right.isNegative) {
+                            stringBuilder.append(", negative");
+                        }
+                        break;
+                    case REAL_LITERAL:
+                        stringBuilder.append(right.realValue);
+                        if (right.isNegative) {
+                            stringBuilder.append(", negative");
+                        }
                 }
                 break;
             case REAL_LITERAL:
@@ -199,6 +213,9 @@ public class TreeNode {
                         break;
                     case REAL_LITERAL:
                         stringBuilder.append(left.getRealValue());
+                        break;
+                    case VOID:
+                        stringBuilder.append(left.getType());
                         break;
                 }
                 break;

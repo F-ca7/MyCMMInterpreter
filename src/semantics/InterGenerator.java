@@ -33,8 +33,7 @@ class InterGenerator {
     // 返回值类型
     // 由于函数不能嵌套, 可以作为全局的变量
     private TreeNodeType returnType;
-    // 参数名前缀
-    private final String ARG_PREFIX = "%arg";
+
     // 根据函数名找到入口地址
     Map<String, Integer> funcInstrMap = new HashMap<>();
     // 根据函数名找到参数类型列表, 可供调用时比对
@@ -43,7 +42,7 @@ class InterGenerator {
 
 
     public static void main(String[] args) {
-        Lexer lexer = new Lexer("Y:\\desktop\\MyCMMInterpreter\\test_func.cmm");
+        Lexer lexer = new Lexer("Y:\\desktop\\MyCMMInterpreter\\test_func_call2.cmm");
         lexer.loadSourceCode();
         lexer.loadTokenList();
         GramParser parser = new GramParser(lexer);
@@ -103,16 +102,16 @@ class InterGenerator {
                     break;
                 case INT_ARRAY_DECLARATION:
                 case REAL_ARRAY_DECLARATION:
-                    genArrDeclaration(node);
+                    genArrDeclaration(node, Collections.emptyMap());
                     break;
                 case ASSIGN:
                     genAssign(node, Collections.emptyMap());
                     break;
                 case IF:
-                    genIf(node);
+                    genIf(node, Collections.emptyMap());
                     break;
                 case WHILE:
-                    genWhile(node);
+                    genWhile(node, Collections.emptyMap());
                     break;
                 case PRINT:
                     genPrint(node);
@@ -131,6 +130,9 @@ class InterGenerator {
                     }
                     break;
                 case EMPTY:
+                    break;
+                case RETURN:
+                    genReturn(node, Collections.emptyMap());
                     break;
                 default:
                     throw new SemanticException("Unknown statement!");
@@ -155,16 +157,16 @@ class InterGenerator {
                     break;
                 case INT_ARRAY_DECLARATION:
                 case REAL_ARRAY_DECLARATION:
-                    genArrDeclaration(node);
+                    genArrDeclaration(node, argMap);
                     break;
                 case ASSIGN:
                     genAssign(node, argMap);
                     break;
                 case IF:
-                    genIf(node);
+                    genIf(node, argMap);
                     break;
                 case WHILE:
-                    genWhile(node);
+                    genWhile(node, argMap);
                     break;
                 case PRINT:
                     genPrint(node);
@@ -186,7 +188,10 @@ class InterGenerator {
                 case EMPTY:
                     break;
                 case RETURN:
-                    genReturn(node);
+                    genReturn(node, argMap);
+                    break;
+                case FUNC_CALL:
+                    genFunctionCall(node, argMap);
                     break;
                 default:
                     throw new SemanticException("Unknown statement!");
@@ -214,7 +219,7 @@ class InterGenerator {
         Map<String, String> argMap = new HashMap<>();
         // 如 x->arg0; y->arg1
         for (int i=0; i<argList.size(); i++) {
-            argMap.put(argList.get(i).getSymbolName(), ARG_PREFIX + i);
+            argMap.put(argList.get(i).getSymbolName(), CodeConstant.ARG_PREFIX + i);
         }
 
         // 右结点: 实现语句块
@@ -234,15 +239,21 @@ class InterGenerator {
     /**
      * 生成返回语句的中间代码
      */
-    private void genReturn(TreeNode node) throws SemanticException {
+    private void genReturn(TreeNode node, Map<String, String> argMap) throws SemanticException {
         Quadruple code = new Quadruple();
         code.operation = CodeConstant.RETURN;
+
         TreeNode left = node.left;
         switch (left.getType()) {
             case IDENTIFIER:
                 // 标识符在运行期再判断类型匹配
                 code.firstOperandType = OperandType.IDENTIFIER;
-                code.firstOperand.name = left.getSymbolName();
+                if (argMap.containsKey(left.getSymbolName())) {
+                    // 是参数，替换为参数名
+                    code.firstOperand.name = argMap.get(left.getSymbolName());
+                } else {
+                    code.firstOperand.name = left.getSymbolName();
+                }
                 break;
             case VOID:
                 if (returnType != TreeNodeType.VOID){
@@ -272,6 +283,7 @@ class InterGenerator {
                 break;
 
         }
+
         codes.add(code);
     }
 
@@ -280,15 +292,25 @@ class InterGenerator {
     /**
      * 生成函数调用的中间代码
      */
-    private void genFunctionCall(TreeNode node) {
-        // 左结点：函数签名
-        TreeNode signNode = node.left;
-        TreeNode argNode = signNode.left;
-        TreeNode retNode = signNode.right;
-        // 参数使用
-        Quadruple argCode;
+    private void genFunctionCall(TreeNode node, Map<String, String> argMap) throws SemanticException {
+        // 先生成入参
+        // 左结点：参数列表
+        TreeNode argNode = node.left;
+        List<TreeNode> argList = argNode.getArgList();
+        Quadruple paramCode;
+        for (TreeNode arg:argList) {
+            paramCode = new Quadruple();
+            paramCode.operation = CodeConstant.ARG;
+            handleOperandLeft(paramCode, arg, argMap);
+            codes.add(paramCode);
+        }
 
-        // 右结点: 实现语句块
+        // 再生成call
+        Quadruple callCode = new Quadruple();
+        callCode.operation = CodeConstant.CALL;
+        callCode.firstOperandType = OperandType.IDENTIFIER;
+        callCode.firstOperand.name = node.getSymbolName();
+        codes.add(callCode);
     }
 
 
@@ -325,19 +347,19 @@ class InterGenerator {
                     }
                     break;
                 case PLUS:
-                    arithOpToCode(stack, TreeNodeType.PLUS);
+                    arithOpToCode(stack, TreeNodeType.PLUS, argMap);
                     break;
                 case MINUS:
-                    arithOpToCode(stack, TreeNodeType.MINUS);
+                    arithOpToCode(stack, TreeNodeType.MINUS, argMap);
                     break;
                 case MULTIPLY:
-                    arithOpToCode(stack, TreeNodeType.MULTIPLY);
+                    arithOpToCode(stack, TreeNodeType.MULTIPLY, argMap);
                     break;
                 case DIVIDE:
-                    arithOpToCode(stack, TreeNodeType.DIVIDE);
+                    arithOpToCode(stack, TreeNodeType.DIVIDE, argMap);
                     break;
                 case ARRAY_ACCESS:
-                    genArrayAccess(stack);
+                    genArrayAccess(stack, argMap);
                     break;
 
             }
@@ -367,7 +389,7 @@ class InterGenerator {
     /**
      * 生成关系表达式的中间代码
      */
-    private String genRelationalExp(TreeNode node) throws SemanticException {
+    private String genRelationalExp(TreeNode node, Map<String, String> argMap) throws SemanticException {
         Quadruple code = new Quadruple();
         switch (node.getType()) {
             case LESS:
@@ -390,8 +412,8 @@ class InterGenerator {
                 break;
 
         }
-        handleOperandLeft(code, node.left, Collections.emptyMap());
-        handleOperandRight(code, node.right);
+        handleOperandLeft(code, node.left, argMap);
+        handleOperandRight(code, node.right, argMap);
         code.dest = getNextTempName();
         codes.add(code);
         return code.dest;
@@ -437,7 +459,7 @@ class InterGenerator {
     /**
      * 生成数组声明的中间代码
      */
-    private void genArrDeclaration(TreeNode node) throws SemanticException {
+    private void genArrDeclaration(TreeNode node, Map<String, String>  argMap) throws SemanticException {
         Quadruple code = new Quadruple();
         if(node.getType() == TreeNodeType.INT_ARRAY_DECLARATION) {
             code.operation = CodeConstant.INT_ARR;
@@ -458,11 +480,11 @@ class InterGenerator {
             case MULTIPLY:
             case DIVIDE:
                 code.firstOperandType = OperandType.IDENTIFIER;
-                code.firstOperand.name = genArithmetic(node.right, Collections.emptyMap());
+                code.firstOperand.name = genArithmetic(node.right, argMap);
                 break;
             case ARRAY_ACCESS:
                 code.firstOperandType = OperandType.IDENTIFIER;
-                code.firstOperand.name = genArrayAccess(node.right);
+                code.firstOperand.name = genArrayAccess(node.right, argMap);
                 break;
         }
         code.dest = node.left.getSymbolName();
@@ -478,25 +500,32 @@ class InterGenerator {
             Stack<TreeNode> stack = new Stack<>();
             stack.push(node.left.left);
             stack.push(node.left.right);
-            code.dest = genArrayAccess(stack);
+            code.dest = genArrayAccess(stack, argMap);
         } else {
             code.dest = node.left.getSymbolName();
         }
         code.operation = CodeConstant.ASSIGN;
-        handleOperandLeft(code, node.right, argMap);
+        if (node.right.getType() == TreeNodeType.FUNC_CALL) {
+            // 函数返回值的赋值
+            genFunctionCall(node.right, argMap);
+            code.firstOperandType = OperandType.IDENTIFIER;
+            code.firstOperand.name = CodeConstant.RETURN_VALUE;
+        } else {
+            handleOperandLeft(code, node.right, argMap);
+        }
         codes.add(code);
     }
 
     /**
      * 生成if语句的中间代码
      */
-    private void genIf(TreeNode node) throws SemanticException {
+    private void genIf(TreeNode node, Map<String, String> argMap) throws SemanticException {
         // if语句块内部的待回填列表
         Stack<Integer> ifBackPatch = new Stack<>();
-        genSelect(node, ifBackPatch);
+        genSelect(node, ifBackPatch, argMap);
         if(node.getStatements().size()!=0) {
             for (TreeNode node1: node.getStatements()) {
-                genSelect(node1, ifBackPatch);
+                genSelect(node1, ifBackPatch, argMap);
             }
         }
         if(node.right!=null) {
@@ -532,10 +561,10 @@ class InterGenerator {
     /**
      * 生成while的中间代码
      */
-    private void genWhile(TreeNode node) throws SemanticException {
+    private void genWhile(TreeNode node, Map<String, String> argMap) throws SemanticException {
         // 进入循环
         loopLevel++;
-        String condition = genRelationalExp(node.getCondition());
+        String condition = genRelationalExp(node.getCondition(), argMap);
         // while的开头位置入栈
         backPatch.push(codes.size()-1);
         Quadruple code = new Quadruple();
@@ -563,10 +592,10 @@ class InterGenerator {
     }
 
 
-    private void genSelect(TreeNode node, Stack<Integer> innerBackFills) throws SemanticException {
+    private void genSelect(TreeNode node, Stack<Integer> innerBackFills, Map<String, String> argMap) throws SemanticException {
         boolean needBackFill = (node.getCondition() != null);
         if(needBackFill) {
-            String condition = genRelationalExp(node.getCondition());
+            String condition = genRelationalExp(node.getCondition(), argMap);
             Quadruple code = new Quadruple();
             code.operation = CodeConstant.JMP_WITH_CONDITION;
             code.firstOperandType = OperandType.IDENTIFIER;
@@ -648,7 +677,7 @@ class InterGenerator {
     /**
      * 将算数操作转为中间代码
      */
-    private void arithOpToCode(Stack<TreeNode> stack, TreeNodeType type) throws SemanticException {
+    private void arithOpToCode(Stack<TreeNode> stack, TreeNodeType type, Map<String, String> argMap) throws SemanticException {
         Quadruple code = new Quadruple();
         switch (type) {
             case PLUS:
@@ -686,7 +715,13 @@ class InterGenerator {
                 break;
             case IDENTIFIER:
                 code.firstOperandType = OperandType.IDENTIFIER;
-                code.firstOperand.name = operand1.getSymbolName();
+                if (argMap.containsKey(operand1.getSymbolName())) {
+                    // 是参数，替换为参数名
+                    code.firstOperand.name = argMap.get(operand1.getSymbolName());
+                } else {
+                    code.firstOperand.name = operand1.getSymbolName();
+                }
+
                 break;
         }
         switch (operand2.getType()) {
@@ -716,7 +751,12 @@ class InterGenerator {
                 break;
             case IDENTIFIER:
                 code.secondOperandType = OperandType.IDENTIFIER;
-                code.secondOperand.name = operand2.getSymbolName();
+                if (argMap.containsKey(operand2.getSymbolName())) {
+                    // 是参数，替换为参数名
+                    code.secondOperand.name = argMap.get(operand2.getSymbolName());
+                } else {
+                    code.secondOperand.name = operand2.getSymbolName();
+                }
                 break;
         }
         code.dest = tempName;
@@ -731,7 +771,7 @@ class InterGenerator {
      * 生成访问数组中间代码
      * 用临时变量来存储要访问的数组元素
      */
-    private String genArrayAccess(Stack<TreeNode> stack) throws SemanticException {
+    private String genArrayAccess(Stack<TreeNode> stack, Map<String, String>  argMap) throws SemanticException {
         Quadruple code = new Quadruple();
         code.operation = CodeConstant.ARR_ACC;
         // 索引值
@@ -743,7 +783,7 @@ class InterGenerator {
         // 数组名
         TreeNode operand2 = stack.pop();
         // 索引值为右操作数
-        handleOperandRight(code, operand1);
+        handleOperandRight(code, operand1, argMap);
         if(operand2.getType() == TreeNodeType.IDENTIFIER) {
             code.firstOperandType = OperandType.IDENTIFIER;
             code.firstOperand.name = operand2.getSymbolName();
@@ -779,7 +819,7 @@ class InterGenerator {
                 break;
             case ARRAY_ACCESS:
                 code.firstOperandType = OperandType.IDENTIFIER;
-                code.firstOperand.name = genArrayAccess(node);
+                code.firstOperand.name = genArrayAccess(node, argMap);
                 break;
             default:
                 code.firstOperandType = OperandType.IDENTIFIER;
@@ -790,7 +830,7 @@ class InterGenerator {
     /**
      * 生成右操作数的中间代码
      */
-    private void handleOperandRight(Quadruple code, TreeNode node) throws SemanticException {
+    private void handleOperandRight(Quadruple code, TreeNode node, Map<String, String>  argMap) throws SemanticException {
         switch (node.getType()) {
             case INT_LITERAL:
                 code.secondOperandType = OperandType.INT_LITERAL;
@@ -802,24 +842,30 @@ class InterGenerator {
                 break;
             case IDENTIFIER:
                 code.secondOperandType = OperandType.IDENTIFIER;
-                code.secondOperand.name = node.getSymbolName();
+                if (argMap.containsKey(node.getSymbolName())) {
+                    // 是参数，替换为参数名
+                    code.secondOperand.name = argMap.get(node.getSymbolName());
+                } else {
+                    code.secondOperand.name = node.getSymbolName();
+                }
+
                 break;
             case ARRAY_ACCESS:
                 code.firstOperandType = OperandType.IDENTIFIER;
-                code.firstOperand.name = genArrayAccess(node);
+                code.firstOperand.name = genArrayAccess(node, argMap);
                 break;
             default:
                 code.secondOperandType = OperandType.IDENTIFIER;
-                code.secondOperand.name = genArithmetic(node, Collections.emptyMap());
+                code.secondOperand.name = genArithmetic(node, argMap);
         }
     }
 
 
-    private String genArrayAccess(TreeNode node) throws SemanticException {
+    private String genArrayAccess(TreeNode node, Map<String, String>  argMap) throws SemanticException {
         Stack<TreeNode> stack = new Stack<>();
         stack.push(node.left);
         stack.push(node.right);
-        return genArrayAccess(stack);
+        return genArrayAccess(stack, argMap);
     }
 
     /**

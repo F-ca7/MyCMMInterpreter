@@ -53,4 +53,8 @@ class CodeConstant {
     // 退出语句块代码
     static final Quadruple outCode = new Quadruple(CodeConstant.OUT);;
 
+    // 参数名前缀
+    static final String ARG_PREFIX = "%arg";
+    // 返回值
+    static final String RETURN_VALUE = "%rax";
 }
