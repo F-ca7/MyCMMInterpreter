@@ -1,0 +1,23 @@
+func main() void{
+    int m; 
+    m = printSum(5, 18);
+    int y = m*2+1;
+    print y;
+	return;
+}
+
+
+func printSum(int a, int b) int {
+	int x = a+b;
+    print x;
+    printDiff(99, 9);
+    print x;
+	return x;
+}
+
+func printDiff(int a, int b) int {
+    int x = a-b;
+    print x;
+    return x;
+}
+

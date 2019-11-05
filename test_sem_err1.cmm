@@ -1,0 +1,10 @@
+func main() void{
+	int i = 100;
+	return;
+}
+
+func add(int a, int b) int{
+	int x = a;
+	int y = a+b;
+	return 11.5;
+}

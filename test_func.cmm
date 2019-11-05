@@ -1,0 +1,33 @@
+func main() void{
+	int x = 9.5+-1*5;
+	int c = x;
+	print c;
+
+	int a[5];
+	int i = 0;
+	while(i<5) {
+		scan x;	
+		a[i] = x;
+		print x;
+		i = i+1;
+	}
+	print a;
+
+	int y = 0;
+	int sum = 0;
+	while(y<10) {
+		sum = sum +y;
+		y = y+1;
+		if(sum>30) {
+			break;
+		}
+	}
+	print sum;
+	return;
+}
+
+func add(int a, int b) int{
+	int x = a;
+	int y = a+b;
+	return y;
+}

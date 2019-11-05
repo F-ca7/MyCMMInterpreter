@@ -1,0 +1,9 @@
+func main() void{
+    int a = add(1,2);
+    int x = minus(3, 4);
+}
+
+func add(int a, int b) int{
+    int x = a+b;
+    return x;
+}

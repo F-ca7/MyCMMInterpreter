@@ -1,0 +1,19 @@
+// right form
+12.6
+0.3
+0123456789
+-20.000
+-02346
++23476
++0234
+0239.120
+// error form
+0.0.2.2.5
+23.-3
+.34  // may regard as right form ~
+0x123 // may regard as right form ~
+123..
+4..3245
+234e-3 // may regard as right from ~
+23.
+234_234   // may regard as right form in JAVA

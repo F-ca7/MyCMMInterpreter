@@ -1,0 +1,11 @@
+
+// test single line comment
+int x = 99;
+
+	/**
+	 *
+	 * test
+	 * multi
+	 * line
+	 */
+int a=7;

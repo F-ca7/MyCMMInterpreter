@@ -1,0 +1,5 @@
+func main() void{
+	int i[10];
+    i[0] = 10/0;
+	return;
+}

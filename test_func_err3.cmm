@@ -1,0 +1,7 @@
+func main() void{
+	
+    int x = 10;
+    print x;
+    i = 100;
+	return;
+}

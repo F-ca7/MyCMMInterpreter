@@ -1,0 +1,16 @@
+   // type
+   int
+   real         // depend on yourself
+   char         // expect to implement
+
+   // structure
+   while
+   for
+   break        // expect to implement
+   //continue  // expect to implement
+   if
+   else
+
+   // input,output is REQUIRED in PPT
+   print        // depend on yourself
+   scan         // depend on yourself

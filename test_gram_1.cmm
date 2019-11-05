@@ -1,0 +1,49 @@
+func main() void {
+  int a[5+1];
+  a[5+1] = 10;
+  if(x<10) {
+    int a=1;
+    a[0] = 5;
+    if(a>10) {
+      if(a>20) {
+        if(x>55) {
+          x=1;
+        } else {
+          x=55;
+          break;
+        }
+      }
+    }
+  }else {
+    x = x+1;
+  }
+
+  if(1>0){
+    if(b>1){
+      if(c+1<5){
+         if(d==1) {
+            if(2==4){
+
+            } else {          
+              x=1;
+            }
+         }
+
+      }
+    } else {
+      x=2;
+    }
+  }
+
+  int a;
+  a  = 0x10;
+  real b_a;
+  b_a = 123e-3;
+  print a; 
+  return;
+}
+
+func add(int a, int b) int{
+  int x = a+b;
+  return x;
+}

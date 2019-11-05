@@ -1,0 +1,11 @@
+func main() void {
+    int a = *2*5+-1;
+    print a;
+    int x = 55
+    if(a==0 {
+        int b = 9;
+    }
+    int b = 5+arr[3]-10;
+    int c = 5+(arr[3)]-10;
+    return;
+}
