@@ -45,7 +45,7 @@ public class Interpreter {
     private Scanner scanner = new Scanner(System.in);
 
     public static void main(String[] args) {
-        Lexer lexer = new Lexer("E:\\desktop\\MyCMMInterpreter\\test_func_call2.cmm");
+        Lexer lexer = new Lexer("E:\\desktop\\MyCMMInterpreter\\test_opt_1.cmm");
         lexer.loadSourceCode();
         lexer.loadTokenList();
         GramParser parser = new GramParser(lexer);
@@ -698,21 +698,21 @@ public class Interpreter {
                 }
 
             }
-            if (code.firstOperand.name.equals(CodeConstant.RETURN_VALUE)) {
+            if (code.secondOperand.name.equals(CodeConstant.RETURN_VALUE)) {
                 // 是返回值
                 switch (retValue.getType()) {
                     case INT:
-                        isFirstOperandInt = true;
+                        isSecondOperandInt = true;
                         return (double) retValue.getIntValue();
                     case REAL:
-                        isFirstOperandInt = false;
+                        isSecondOperandInt = false;
                         return retValue.getRealValue();
                 }
             }
             // 是临时变量，在符号表中查找
-            Symbol symbol = stackFrames.peek().localVarTable.getSymbol(code.firstOperand.name);
+            Symbol symbol = getSymbol(code.secondOperand.name);
             if (symbol == null) {
-                symbolNotFoundException(code.firstOperand.name);
+                symbolNotFoundException(code.secondOperand.name);
             }
             if (symbol.getType() == SymValueType.INT ||
                     symbol.getType() == SymValueType.INT_ARRAY_ELEMENT) {
