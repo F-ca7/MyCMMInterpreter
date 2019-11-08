@@ -1,17 +1,12 @@
 func main() void{
-	int x = 100;
-	int sum = 0;
-    int y = 5;
-    int z = 55;
 	if(1>99) {
-		sum = sum -x;
-		print sum;
+		print 1;
 	} else if (5 >4) {
-        print y;
+        print 2;
     } else if (100>55) {
-        print z;
+        print 3;
     }  else {
-		print x;
+		print 4;
 	}
 	return;
 }

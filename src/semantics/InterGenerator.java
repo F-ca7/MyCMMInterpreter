@@ -640,7 +640,7 @@ class InterGenerator {
         codes.add(code);
         codes.add(CodeConstant.inCode);
         generate(node.left.getStatements());
-        codes.add(CodeConstant.outCode);
+
         Quadruple code1 = new Quadruple();
         code1.operation = CodeConstant.JMP;
         // 跳到while的开头
@@ -653,6 +653,7 @@ class InterGenerator {
             int breakLocation = breakIndex.pop();
             codes.get(breakLocation).jumpLocation = codes.size();
         }
+        codes.add(CodeConstant.outCode);
         // 退出循环
         loopLevel--;
     }
@@ -981,6 +982,9 @@ class InterGenerator {
     private void optimizeUnusedVariables() {
         // 记录声明变量的行号
         Map<String, Integer> declaredVarMap = new HashMap<>();
+        // 记录代码段移动的间隔
+        List<Integer> offsetIntervals = new ArrayList<>();
+        offsetIntervals.add(0);
         String operation;
         for (int i=0; i<codes.size(); i++) {
             operation = codes.get(i).operation;
@@ -997,15 +1001,52 @@ class InterGenerator {
                 }
             }
         }
+        if (declaredVarMap.isEmpty()) {
+            // 没有可以优化的
+            return;
+        }
+        // 计算代码段移动的间隔
+        for (int i=0; i<codes.size(); i++) {
+            if (declaredVarMap.containsValue(i)) {
+                offsetIntervals.add(i);
+            }
+        }
+        // System.out.println(offsetIntervals);
         // 最后剩下的是声明但未使用的变量
         // 使用倒序删除法，不用考虑下标问题
         for (int i=codes.size()-1; i>=0; i--) {
             if (declaredVarMap.containsValue(i)) {
                 //System.out.printf("中间代码第%d行变量声明但未使用\n", i);
                 codes.remove(i);
+            } else if (codes.get(i).operation.equals(CodeConstant.JMP) ||
+                    codes.get(i).operation.equals(CodeConstant.JMP_WITH_CONDITION) ) {
+                // 偏移跳转位置
+                int originJmpIndex = codes.get(i).jumpLocation;
+                int newJmpIndex = originJmpIndex-calcIntervalIndex(offsetIntervals, originJmpIndex);
+                // 更新跳转位置
+                codes.get(i).jumpLocation = newJmpIndex;
             }
         }
+    }
 
+    /**
+     * 计算代码所属行号要偏移的数量
+     * @param offsetIntervals 移除的行号列表
+     * @param lineIndex 原始行号
+     * @return 要偏移的数量
+     */
+    private int calcIntervalIndex(List<Integer> offsetIntervals, int lineIndex) {
+        if (offsetIntervals.size() <= 1) {
+            return 0;
+        }
+        int i = 0;
+        for (i=0; i<offsetIntervals.size()-1; i++) {
+            // 左闭右开
+            if (lineIndex>=offsetIntervals.get(i) && lineIndex<offsetIntervals.get(i+1)) {
+                return i;
+            }
+        }
+        return i;
     }
 
 

@@ -45,7 +45,7 @@ public class Interpreter {
     private Scanner scanner = new Scanner(System.in);
 
     public static void main(String[] args) {
-        Lexer lexer = new Lexer("Y:\\desktop\\MyCMMInterpreter\\test_opt_1.cmm");
+        Lexer lexer = new Lexer("Y:\\desktop\\MyCMMInterpreter\\test_opt_2.cmm");
         lexer.loadSourceCode();
         lexer.loadTokenList();
         GramParser parser = new GramParser(lexer);
@@ -69,14 +69,19 @@ public class Interpreter {
         System.out.println(generator.getFormattedCodes());
         // 将中间代码输入解释器执行
         Interpreter interpreter = new Interpreter(generator);
+        long startTime = System.currentTimeMillis();    //获取开始时间
+
         try {
             interpreter.run();
         } catch (ExecutionException e) {
             System.out.println("执行期间错误！" + e.getMessage());
         }
 
+        long endTime = System.currentTimeMillis();    //获取结束时间
+
         System.out.println("----------------");
         System.out.println("解释器执行完毕");
+        System.out.printf("执行时间为 %dms\n", endTime-startTime);
     }
 
     /**
