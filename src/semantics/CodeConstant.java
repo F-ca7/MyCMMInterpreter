@@ -57,4 +57,10 @@ class CodeConstant {
     static final String ARG_PREFIX = "%arg";
     // 返回值
     static final String RETURN_VALUE = "%rax";
+    // TRUE
+    static final String TRUE = "true";
+    // FALSE
+    static final String FALSE = "false";
+    // 缺省操作
+    static final String DEFAULT = "default";
 }

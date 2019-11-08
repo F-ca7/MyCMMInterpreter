@@ -28,8 +28,6 @@ class InterGenerator {
     private int loopLevel = 0;
     // 记录break的位置回填
     private Stack<Integer> breakIndex = new Stack<>();
-    // 主函数入口
-    private int entryPoint = 0;
     // 返回值类型
     // 由于函数不能嵌套, 可以作为全局的变量
     private TreeNodeType returnType;
@@ -38,8 +36,8 @@ class InterGenerator {
     Map<String, Integer> funcInstrMap = new HashMap<>();
     // 根据函数名找到参数类型列表, 可供调用时比对
     Map<String, List<TreeNode>> funcArgTypeMap = new HashMap<>();
-
-
+    // 是否开启优化
+    private boolean optimEnabled = true;
 
     public static void main(String[] args) {
         Lexer lexer = new Lexer("Y:\\desktop\\MyCMMInterpreter\\test_func_call2.cmm");
@@ -120,7 +118,7 @@ class InterGenerator {
                     genScan(node);
                     break;
                 case STATEMENT_BLOCK:
-                    genStatementBlock(node);
+                    genStatementBlock(node, Collections.emptyMap());
                     break;
                 case BREAK:
                     if(loopLevel==0) {
@@ -175,7 +173,7 @@ class InterGenerator {
                     genScan(node);
                     break;
                 case STATEMENT_BLOCK:
-                    genStatementBlock(node);
+                    genStatementBlock(node, argMap);
                     break;
                 case BREAK:
                     if(loopLevel==0) {
@@ -390,6 +388,52 @@ class InterGenerator {
      * 生成关系表达式的中间代码
      */
     private String genRelationalExp(TreeNode node, Map<String, String> argMap) throws SemanticException {
+        if (optimEnabled) {
+            // 对常数的比较进行优化
+            if (node.left.getType()==TreeNodeType.INT_LITERAL
+                    && node.right.getType()==TreeNodeType.INT_LITERAL) {
+                int lVal = node.left.getIntValue(), rVal = node.right.getIntValue();
+                switch (node.getType()) {
+                    case LESS:
+                        if (lVal < rVal) {
+                            return CodeConstant.TRUE;
+                        } else {
+                            return CodeConstant.FALSE;
+                        }
+                    case EQUAL:
+                        if (lVal == rVal) {
+                            return CodeConstant.TRUE;
+                        } else {
+                            return CodeConstant.FALSE;
+                        }
+                    case GREATER:
+                        if (lVal > rVal) {
+                            return CodeConstant.TRUE;
+                        } else {
+                            return CodeConstant.FALSE;
+                        }
+                    case LESS_EQ:
+                        if (lVal <= rVal) {
+                            return CodeConstant.TRUE;
+                        } else {
+                            return CodeConstant.FALSE;
+                        }
+                    case GREATER_EQ:
+                        if (lVal >= rVal) {
+                            return CodeConstant.TRUE;
+                        } else {
+                            return CodeConstant.FALSE;
+                        }
+                    case NOT_EQUAL:
+                        if (lVal != rVal) {
+                            return CodeConstant.TRUE;
+                        } else {
+                            return CodeConstant.FALSE;
+                        }
+                }
+            }
+        }
+
         Quadruple code = new Quadruple();
         switch (node.getType()) {
             case LESS:
@@ -412,6 +456,7 @@ class InterGenerator {
                 break;
 
         }
+
         handleOperandLeft(code, node.left, argMap);
         handleOperandRight(code, node.right, argMap);
         code.dest = getNextTempName();
@@ -522,13 +567,18 @@ class InterGenerator {
     private void genIf(TreeNode node, Map<String, String> argMap) throws SemanticException {
         // if语句块内部的待回填列表
         Stack<Integer> ifBackPatch = new Stack<>();
-        genSelect(node, ifBackPatch, argMap);
+        // 判断条件
+        String result = genSelect(node, ifBackPatch, argMap);
+        if (result.equals(CodeConstant.TRUE)) {
+            return;
+        }
         if(node.getStatements().size()!=0) {
             for (TreeNode node1: node.getStatements()) {
                 genSelect(node1, ifBackPatch, argMap);
             }
         }
         if(node.right!=null) {
+            // 进入条件为false的语句块
             codes.add(CodeConstant.inCode);
             generate(node.right.getStatements());
             Quadruple code1 = new Quadruple();
@@ -542,7 +592,7 @@ class InterGenerator {
                 breakIndex.pop();
                 // 具体跳出循环的位置等待回填
                 breakIndex.push(codes.size()-1);
-            }else {
+            } else {
                 codes.add(CodeConstant.outCode);
             }
             code1.operation = CodeConstant.JMP;
@@ -592,10 +642,27 @@ class InterGenerator {
     }
 
 
-    private void genSelect(TreeNode node, Stack<Integer> innerBackFills, Map<String, String> argMap) throws SemanticException {
+    private String genSelect(TreeNode node, Stack<Integer> innerBackFills, Map<String, String> argMap) throws SemanticException {
         boolean needBackFill = (node.getCondition() != null);
         if(needBackFill) {
+            // condition为存储关系表达式的中间变量
             String condition = genRelationalExp(node.getCondition(), argMap);
+            if (optimEnabled) {
+                if (condition.equals(CodeConstant.TRUE)) {
+                    // 不用生成跳转语句
+                    // 只生成true时的语句块
+                    codes.add(CodeConstant.inCode);
+                    generate(node.left.getStatements());
+                    codes.add(CodeConstant.outCode);
+                    return CodeConstant.TRUE;
+                }
+                if (condition.equals(CodeConstant.FALSE)) {
+                    // 不用生成跳转语句和语句块
+                    return CodeConstant.FALSE;
+                }
+
+            }
+            // 条件判断后的跳转语句
             Quadruple code = new Quadruple();
             code.operation = CodeConstant.JMP_WITH_CONDITION;
             code.firstOperandType = OperandType.IDENTIFIER;
@@ -603,10 +670,18 @@ class InterGenerator {
             codes.add(code);
             backPatch.push(codes.size()-1);
         }
+        // 生成条件为true时的语句块
+        genConditionTrue(node, innerBackFills, needBackFill);
+        return CodeConstant.DEFAULT;
+    }
+
+    /**
+     * 生成条件为真的时的语句块
+     */
+    private void genConditionTrue(TreeNode node, Stack<Integer> innerBackFills, boolean needBackFill) throws SemanticException {
         codes.add(CodeConstant.inCode);
         generate(node.left.getStatements());
         Quadruple code1 = new Quadruple();
-        // codes.add(CodeConstant.outCode);
         if (!breakIndex.empty()) {
             // 如果最后一句是break
             // 把out放在jmp前
@@ -632,6 +707,7 @@ class InterGenerator {
             codes.get(backFillInstruction).jumpLocation = jumpLocation;
         }
     }
+
 
     /**
      * 生成输出指令
