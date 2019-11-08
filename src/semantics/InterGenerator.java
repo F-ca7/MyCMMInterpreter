@@ -37,7 +37,7 @@ class InterGenerator {
     // 根据函数名找到参数类型列表, 可供调用时比对
     Map<String, List<TreeNode>> funcArgTypeMap = new HashMap<>();
     // 是否开启优化
-    private boolean optimEnabled = true;
+    private boolean optimEnabled = false;
 
     public static void main(String[] args) {
         Lexer lexer = new Lexer("Y:\\desktop\\MyCMMInterpreter\\test_func_call2.cmm");
@@ -573,12 +573,23 @@ class InterGenerator {
             return;
         }
         if(node.getStatements().size()!=0) {
+            // 生成else-if语句块
             for (TreeNode node1: node.getStatements()) {
-                genSelect(node1, ifBackPatch, argMap);
+                result = genSelect(node1, ifBackPatch, argMap);
+                if (result.equals(CodeConstant.TRUE)) {
+                    return;
+                }
             }
         }
+        if (node.right != null && result.equals(CodeConstant.FALSE)) {
+            // 直接生成else的代码块
+            codes.add(CodeConstant.inCode);
+            generate(node.right.getStatements());
+            codes.add(CodeConstant.outCode);
+            return;
+        }
         if(node.right!=null) {
-            // 进入条件为false的语句块
+            // 进入条件为false的语句块并回填之前的jump
             codes.add(CodeConstant.inCode);
             generate(node.right.getStatements());
             Quadruple code1 = new Quadruple();
@@ -715,7 +726,20 @@ class InterGenerator {
     private void genPrint(TreeNode node) {
         Quadruple code = new Quadruple();
         code.operation = CodeConstant.PRINT;
-        code.dest = node.left.getSymbolName();
+        switch (node.left.getType()) {
+            case IDENTIFIER:
+                code.firstOperandType = OperandType.IDENTIFIER;
+                code.firstOperand.name = node.left.getSymbolName();
+                break;
+            case INT_LITERAL:
+                code.firstOperandType = OperandType.INT_LITERAL;
+                code.firstOperand = new IntOperand(node.left.getIntValue());
+                break;
+            case REAL_LITERAL:
+                code.firstOperandType = OperandType.REAL_LITERAL;
+                code.firstOperand = new RealOperand(node.left.getRealValue());
+                break;
+        }
         codes.add(code);
     }
 

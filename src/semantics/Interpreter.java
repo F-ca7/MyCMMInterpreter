@@ -45,7 +45,7 @@ public class Interpreter {
     private Scanner scanner = new Scanner(System.in);
 
     public static void main(String[] args) {
-        Lexer lexer = new Lexer("E:\\desktop\\MyCMMInterpreter\\test_opt_1.cmm");
+        Lexer lexer = new Lexer("Y:\\desktop\\MyCMMInterpreter\\test_opt_1.cmm");
         lexer.loadSourceCode();
         lexer.loadTokenList();
         GramParser parser = new GramParser(lexer);
@@ -252,33 +252,39 @@ public class Interpreter {
      * 向控制台输出
      */
     private void print(Quadruple code) {
-        Symbol symbol = getSymbol(code.dest);
-        switch (symbol.getType()) {
-            case INT_ARRAY_ELEMENT:
-            case INT:
-                System.out.println(symbol.getIntValue());
-                break;
-            case REAL_ARRAY_ELEMENT:
-            case REAL:
-                System.out.println(symbol.getRealValue());
-                break;
-            case CHAR:
-                System.out.printf("%c\n", symbol.getIntValue());
-                break;
-            case INT_ARRAY:
-                Integer[] arrInt =  Arrays.stream(symbol.getIntArray()).boxed().toArray(Integer[]::new);
-                System.out.println(arrToString(arrInt));
-                break;
-            case REAL_ARRAY:
-                Double[] arrReal =  Arrays.stream(symbol.getRealArray()).boxed().toArray(Double[]::new);
-                System.out.println(arrToString(arrReal));
-                break;
-            case TRUE:
-                System.out.println("true");
-                break;
-            case FALSE:
-                System.out.println("false");
-                break;
+        if (code.firstOperandType == OperandType.IDENTIFIER) {
+            Symbol symbol = getSymbol(code.firstOperand.name);
+            switch (symbol.getType()) {
+                case INT_ARRAY_ELEMENT:
+                case INT:
+                    System.out.println(symbol.getIntValue());
+                    break;
+                case REAL_ARRAY_ELEMENT:
+                case REAL:
+                    System.out.println(symbol.getRealValue());
+                    break;
+                case CHAR:
+                    System.out.printf("%c\n", symbol.getIntValue());
+                    break;
+                case INT_ARRAY:
+                    Integer[] arrInt =  Arrays.stream(symbol.getIntArray()).boxed().toArray(Integer[]::new);
+                    System.out.println(arrToString(arrInt));
+                    break;
+                case REAL_ARRAY:
+                    Double[] arrReal =  Arrays.stream(symbol.getRealArray()).boxed().toArray(Double[]::new);
+                    System.out.println(arrToString(arrReal));
+                    break;
+                case TRUE:
+                    System.out.println("true");
+                    break;
+                case FALSE:
+                    System.out.println("false");
+                    break;
+            }
+        } else if (code.firstOperandType == OperandType.INT_LITERAL) {
+            System.out.println(((IntOperand)code.firstOperand).intLiteral);
+        } else if (code.firstOperandType == OperandType.REAL_LITERAL) {
+            System.out.println(((RealOperand)code.firstOperand).realLiteral);
         }
         nextInstruction();
     }

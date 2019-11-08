@@ -649,12 +649,24 @@ public class GramParser {
         TreeNode node = new TreeNode();
         node.setType(TreeNodeType.PRINT);
         TreeNode left = new TreeNode();
-        left.setType(TreeNodeType.IDENTIFIER);
-        matchTokenNext(TokenType.IDENTIFIER);
-        left.setSymbolName(curToken.getStringValue());
+        getNextToken();
+        switch (curToken.getType()) {
+            case INT_LITERAL:
+                left.setType(TreeNodeType.INT_LITERAL);
+                left.setIntValue(curToken.getIntValue());
+                break;
+            case REAL_LITERAL:
+                left.setType(TreeNodeType.REAL_LITERAL);
+                left.setRealValue(curToken.getRealValue());
+                break;
+            case IDENTIFIER:
+                left.setType(TreeNodeType.IDENTIFIER);
+                left.setSymbolName(curToken.getStringValue());
+                break;
+        }
+
         node.left = left;
         matchTokenNext(TokenType.SEMICOLON, true);
-
         return node;
     }
 

@@ -94,7 +94,8 @@ mul-op -> * | /
 jne,条件,null,目标
 jmp,null,null,目标
 read,null,null,变量
-print,null,null,变量
+print,变量,null,null
+scan,变量,null,null
 in,null,null,null
 out,null,null,null
 int,右值,null,左值
@@ -111,7 +112,8 @@ ret,null,null,null
 1. test_sem_err1 检查语义期间错返回值类型匹配错误
 2. test_sem_err2 检查语义期间除以0错误
 
-
+3. test_opt_1 中间代码优化-if-elseif-else的常量判断优化
+4. test_opt_2 赋值但未使用的变量优化
 ### 解释执行测试
 
 ---------
