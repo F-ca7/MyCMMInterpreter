@@ -1,0 +1,17 @@
+func main() void{
+	int x = 100;
+	int sum = 0;
+    int y = 5;
+    int z = 55;
+	if(1>99) {
+		sum = sum -x;
+		print sum;
+	} else if (5 >4) {
+        print y;
+    } else if (100>55) {
+        print z;
+    }  else {
+		print x;
+	}
+	return;
+}

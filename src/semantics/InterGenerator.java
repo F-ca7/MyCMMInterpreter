@@ -37,7 +37,7 @@ class InterGenerator {
     // 根据函数名找到参数类型列表, 可供调用时比对
     Map<String, List<TreeNode>> funcArgTypeMap = new HashMap<>();
     // 是否开启优化
-    private boolean optimEnabled = false;
+    private boolean optimEnabled = true;
 
     public static void main(String[] args) {
         Lexer lexer = new Lexer("Y:\\desktop\\MyCMMInterpreter\\test_func_call2.cmm");
@@ -77,7 +77,12 @@ class InterGenerator {
 
     public void start() throws SemanticException {
         generate(parser.getTreeNodes());
+        // 进行未使用变量优化
+        if (optimEnabled) {
+            optimizeUnusedVariables();
+        }
     }
+
 
     public List<Quadruple> getCodes() {
         return codes;
@@ -960,13 +965,49 @@ class InterGenerator {
         }
     }
 
-
+    /**
+     * 数组访问
+     */
     private String genArrayAccess(TreeNode node, Map<String, String>  argMap) throws SemanticException {
         Stack<TreeNode> stack = new Stack<>();
         stack.push(node.left);
         stack.push(node.right);
         return genArrayAccess(stack, argMap);
     }
+
+    /**
+     * 未使用变量优化
+     */
+    private void optimizeUnusedVariables() {
+        // 记录声明变量的行号
+        Map<String, Integer> declaredVarMap = new HashMap<>();
+        String operation;
+        for (int i=0; i<codes.size(); i++) {
+            operation = codes.get(i).operation;
+            if (operation.equals(CodeConstant.INT) || operation.equals(CodeConstant.REAL) || operation.equals(CodeConstant.CHAR)) {
+                // 声明了变量
+                declaredVarMap.put(codes.get(i).dest, i);
+            } else {
+                // 使用了变量
+                if (codes.get(i).firstOperandType == OperandType.IDENTIFIER) {
+                    declaredVarMap.remove(codes.get(i).firstOperand.name);
+                }
+                if (codes.get(i).secondOperandType == OperandType.IDENTIFIER) {
+                    declaredVarMap.remove(codes.get(i).secondOperand.name);
+                }
+            }
+        }
+        // 最后剩下的是声明但未使用的变量
+        // 使用倒序删除法，不用考虑下标问题
+        for (int i=codes.size()-1; i>=0; i--) {
+            if (declaredVarMap.containsValue(i)) {
+                //System.out.printf("中间代码第%d行变量声明但未使用\n", i);
+                codes.remove(i);
+            }
+        }
+
+    }
+
 
     /**
      * 抛出除以0异常
