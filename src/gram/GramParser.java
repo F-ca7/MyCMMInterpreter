@@ -117,18 +117,18 @@ public class GramParser {
 
         }
 
-        System.out.println("语法分析结束");
-        if (!ifSuccess) {
-            // 报告错误
-            System.out.println("语法分析错误！");
-            System.out.println(errInfoBuffer.toString());
-        } else {
-            System.out.println("语法分析成功");
-            for(int i = 0;i<treeNodes.size(); i++) {
-                System.out.printf("第%d棵语法树:\n", i+1);
-                System.out.println(TreeNode.getLevelOrderString(treeNodes.get(i), 0));
-            }
-        }
+//        System.out.println("语法分析结束");
+//        if (!ifSuccess) {
+//            // 报告错误
+//            System.out.println("语法分析错误！");
+//            System.out.println(errInfoBuffer.toString());
+//        } else {
+//            System.out.println("语法分析成功");
+//            for(int i = 0;i<treeNodes.size(); i++) {
+//                System.out.printf("第%d棵语法树:\n", i+1);
+//                System.out.println(TreeNode.getLevelOrderString(treeNodes.get(i), 0));
+//            }
+//        }
 
     }
 

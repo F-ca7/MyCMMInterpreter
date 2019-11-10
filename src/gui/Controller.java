@@ -1,10 +1,13 @@
 package gui;
 
+import exception.ExecutionException;
+import exception.SemanticException;
 import gram.GramParser;
 import gram.TreeNode;
 import gram.TreeNodeType;
 import javafx.event.ActionEvent;
 import javafx.scene.Node;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
 import javafx.stage.FileChooser;
@@ -23,7 +26,7 @@ public class Controller {
     // 语法分析器
     GramParser parser;
     // 语义分析中间代码生成器
-    InterGenerator interGenerator;
+    InterGenerator generator;
     // 解释执行器
     Interpreter interpreter;
 
@@ -32,7 +35,9 @@ public class Controller {
 
     public TextArea txa_lex_result;
     public TextArea txa_gram_result;
+    public TextArea txa_semantic_result;
     public TreeView tree_syntax;
+    public CheckBox ckb_optimized;
 
     /**
      * 载入源文件
@@ -90,6 +95,52 @@ public class Controller {
     }
 
 
+    /**
+     * 进行语义分析
+     * 生成中间代码
+     */
+    public void doSemantics(ActionEvent event) {
+        generator = new InterGenerator(parser);
+        boolean ifOptimized = ckb_optimized.isSelected();
+        txa_semantic_result.setText("");
+        try {
+            // 是否开启优化
+            generator.setOptimEnabled(ifOptimized);
+            generator.start();
+            // 输出函数入口地址
+            appendSemanticResult("函数入口地址");
+            appendSemanticResult(generator.funcInstrMap.toString());
+            // 输出函数参数类型
+            appendSemanticResult("函数参数类型");
+            appendSemanticResult(generator.funcArgTypeMap.toString());
+            // 输出中间代码-四元式表示
+            appendSemanticResult(generator.getFormattedCodes());
+        }catch (SemanticException e){
+            appendSemanticResult("语义分析错误！" + e.getMessage());
+        }
+
+    }
+
+
+    /**
+     * 解释执行
+     */
+    public void execute(ActionEvent event) {
+        interpreter = new Interpreter(generator);
+        long startTime = System.currentTimeMillis();    //获取开始时间
+
+        try {
+            interpreter.run();
+        } catch (ExecutionException e) {
+            System.out.println("执行期间错误！" + e.getMessage());
+        }
+
+        long endTime = System.currentTimeMillis();    //获取结束时间
+
+        System.out.println("----------------");
+        System.out.println("解释器执行完毕");
+        System.out.printf("执行时间为 %dms\n", endTime-startTime);
+    }
 
     /**
      * 向词法分析结果输出
@@ -107,6 +158,15 @@ public class Controller {
         tree_syntax.setVisible(false);
         txa_gram_result.appendText(text+"\n");
     }
+
+    /**
+     * 向语义分析结果输出
+     */
+    private void appendSemanticResult(String text) {
+        txa_semantic_result.appendText(text+"\n");
+    }
+
+
 
     /**
      * 生成语法树
@@ -244,6 +304,5 @@ public class Controller {
             stmtSubTree.getChildren().add(rightTreeItem);
         }
     }
-
 
 }

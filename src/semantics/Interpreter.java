@@ -100,7 +100,7 @@ public class Interpreter {
     /**
      * 执行每一行中间代码
      */
-    private void run() throws ExecutionException {
+    public void run() throws ExecutionException {
         // 从main函数开始执行
         if (funcInstrMap.containsKey("main")) {
             instrIndex = funcInstrMap.get("main");

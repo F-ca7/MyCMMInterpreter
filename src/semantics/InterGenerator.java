@@ -33,9 +33,12 @@ public class InterGenerator {
     private TreeNodeType returnType;
 
     // 根据函数名找到入口地址
-    Map<String, Integer> funcInstrMap = new HashMap<>();
+    public Map<String, Integer> funcInstrMap = new HashMap<>();
     // 根据函数名找到参数类型列表, 可供调用时比对
-    private Map<String, List<TreeNode>> funcArgTypeMap = new HashMap<>();
+    public Map<String, List<TreeNode>> funcArgTypeMap = new HashMap<>();
+
+
+
     // 是否开启优化
     private boolean optimEnabled = true;
 
@@ -71,7 +74,7 @@ public class InterGenerator {
     }
 
 
-    InterGenerator(GramParser parser) {
+    public InterGenerator(GramParser parser) {
         this.parser = parser;
     }
 
@@ -1094,6 +1097,10 @@ public class InterGenerator {
             stringBuilder.append(i).append("  ").append(codes.get(i).toString()).append("\n");
         }
         return stringBuilder.toString();
+    }
+
+    public void setOptimEnabled(boolean optimEnabled) {
+        this.optimEnabled = optimEnabled;
     }
 
 }

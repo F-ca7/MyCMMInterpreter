@@ -95,14 +95,14 @@ public class Lexer {
             }
 
         } while (token.getType() != TokenType.EOF);
-        System.out.println("词法分析结束");
-
-        if (!lexer.ifSuccess) {
-            // 报告错误
-            System.out.println(lexer.errInfoBuffer.toString());
-        }else {
-            System.out.println("无错误发生！");
-        }
+//        System.out.println("词法分析结束");
+//
+//        if (!lexer.ifSuccess) {
+//            // 报告错误
+//            System.out.println(lexer.errInfoBuffer.toString());
+//        }else {
+//            System.out.println("无错误发生！");
+//        }
 
     }
 
