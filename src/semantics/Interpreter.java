@@ -45,7 +45,7 @@ public class Interpreter {
     private Scanner scanner = new Scanner(System.in);
 
     public static void main(String[] args) {
-        Lexer lexer = new Lexer("Y:\\desktop\\MyCMMInterpreter\\test_opt_2.cmm");
+        Lexer lexer = new Lexer("E:\\desktop\\MyCMMInterpreter\\test_opt_2.cmm");
         lexer.loadSourceCode();
         lexer.loadTokenList();
         GramParser parser = new GramParser(lexer);

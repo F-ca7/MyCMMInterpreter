@@ -40,9 +40,9 @@ public class Lexer {
     // 源代码
     private String srcCode;
     // 错误信息
-    private StringBuffer errInfoBuffer = new StringBuffer();
+    public StringBuffer errInfoBuffer = new StringBuffer();
     // 是否成功
-    private boolean ifSuccess = true;
+    public boolean ifSuccess = true;
     // token流
     public List<Token> tokenList = new ArrayList<>();
     // 指向正在读取字符的位置的指针
@@ -78,7 +78,7 @@ public class Lexer {
     }
 
     public static void main(String[] args) {
-        Lexer lexer = new Lexer("Y:\\desktop\\MyCMMInterpreter\\test_lex_err4.cmm");
+        Lexer lexer = new Lexer("E:\\desktop\\MyCMMInterpreter\\test_opt_1.cmm");
         lexer.loadSourceCode();
         Token token = new Token();
         do {

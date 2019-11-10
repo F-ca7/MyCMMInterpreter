@@ -19,13 +19,13 @@ public class GramParser {
     // 当前token
     private Token curToken;
     // 一条函数对应一棵语法树
-    private List<TreeNode> treeNodes = new ArrayList<>();
+    public List<TreeNode> treeNodes = new ArrayList<>();
     // token指针
     private int tokenPtr = -1;
     // 错误信息
-    private StringBuffer errInfoBuffer = new StringBuffer();
+    public StringBuffer errInfoBuffer = new StringBuffer();
     // 是否成功
-    private boolean ifSuccess = true;
+    public boolean ifSuccess = true;
 
     // 待定义的函数
     private List<FuncDeclaration> toBeDefinedFuncs = new LinkedList<>();

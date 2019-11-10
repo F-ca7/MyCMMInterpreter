@@ -14,7 +14,7 @@ import java.util.*;
  * @author FANG
  * @date 2019/10/26 23:04
  **/
-class InterGenerator {
+public class InterGenerator {
     // 中间指令列表
     private List<Quadruple> codes = new ArrayList<>();
     // 语法分析器
@@ -35,12 +35,12 @@ class InterGenerator {
     // 根据函数名找到入口地址
     Map<String, Integer> funcInstrMap = new HashMap<>();
     // 根据函数名找到参数类型列表, 可供调用时比对
-    Map<String, List<TreeNode>> funcArgTypeMap = new HashMap<>();
+    private Map<String, List<TreeNode>> funcArgTypeMap = new HashMap<>();
     // 是否开启优化
     private boolean optimEnabled = true;
 
     public static void main(String[] args) {
-        Lexer lexer = new Lexer("Y:\\desktop\\MyCMMInterpreter\\test_func_call2.cmm");
+        Lexer lexer = new Lexer("E:\\desktop\\MyCMMInterpreter\\test_func_call2.cmm");
         lexer.loadSourceCode();
         lexer.loadTokenList();
         GramParser parser = new GramParser(lexer);
@@ -1022,9 +1022,8 @@ class InterGenerator {
                     codes.get(i).operation.equals(CodeConstant.JMP_WITH_CONDITION) ) {
                 // 偏移跳转位置
                 int originJmpIndex = codes.get(i).jumpLocation;
-                int newJmpIndex = originJmpIndex-calcIntervalIndex(offsetIntervals, originJmpIndex);
                 // 更新跳转位置
-                codes.get(i).jumpLocation = newJmpIndex;
+                codes.get(i).jumpLocation = originJmpIndex-calcIntervalIndex(offsetIntervals, originJmpIndex);
             }
         }
     }

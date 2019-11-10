@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TreeView?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.text.Font?>
+
+<AnchorPane prefHeight="500.0" prefWidth="1130.0" xmlns="http://javafx.com/javafx/8.0.172-ea" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.Controller">
+   <children>
+      <Button layoutX="3.0" mnemonicParsing="false" onAction="#loadSourceCode" prefHeight="32.0" prefWidth="80.0" text="打开源文件" />
+      <Button layoutX="218.0" layoutY="14.0" mnemonicParsing="false" onAction="#doLexAnalysis" prefHeight="32.0" prefWidth="80.0" text="词法分析" />
+      <Button layoutX="672.0" layoutY="14.0" mnemonicParsing="false" onAction="#doGrammarParse" prefHeight="32.0" prefWidth="80.0" text="语法分析" />
+      <Button layoutX="959.0" layoutY="14.0" mnemonicParsing="false" prefHeight="32.0" prefWidth="80.0" text="语义分析" />
+      <TextArea fx:id="txa_lex_result" layoutX="21.0" layoutY="62.0" prefHeight="351.0" prefWidth="277.0" />
+      <TextArea fx:id="txa_gram_result" layoutX="332.0" layoutY="62.0" prefHeight="351.0" prefWidth="420.0" />
+      <TextArea layoutX="783.0" layoutY="62.0" prefHeight="351.0" prefWidth="256.0" />
+      <Label layoutX="100.0" layoutY="423.0" prefHeight="32.0" prefWidth="130.0" text="词法单元序列">
+         <font>
+            <Font size="18.0" />
+         </font>
+      </Label>
+
+       <Label layoutX="511.0" layoutY="423.0" prefHeight="32.0" prefWidth="63.0" text="语法树">
+         <font>
+            <Font size="18.0" />
+         </font>
+      </Label>
+
+       <Label layoutX="857.0" layoutY="423.0" prefHeight="32.0" prefWidth="130.0" text="中间代码">
+         <font>
+            <Font size="18.0" />
+         </font>
+      </Label>
+      <TreeView fx:id="tree_syntax" layoutX="332.0" layoutY="62.0" prefHeight="351.0" prefWidth="420.0" />
+      <CheckBox layoutX="833.0" layoutY="22.0" mnemonicParsing="false" prefHeight="16.0" prefWidth="102.0" text="中间代码优化" />
+      <Button layoutX="1060.0" layoutY="177.0" mnemonicParsing="false" prefHeight="156.0" prefWidth="55.0" text="解&#10;释&#10;执&#10;行" textAlignment="CENTER">
+         <font>
+            <Font size="18.0" />
+         </font>
+      </Button>
+   </children>
+</AnchorPane>
