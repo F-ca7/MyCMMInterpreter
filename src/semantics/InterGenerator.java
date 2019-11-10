@@ -37,10 +37,10 @@ public class InterGenerator {
     // 根据函数名找到参数类型列表, 可供调用时比对
     public Map<String, List<TreeNode>> funcArgTypeMap = new HashMap<>();
 
-
-
     // 是否开启优化
     private boolean optimEnabled = true;
+    // 优化信息
+    private StringBuilder optimStringBuilder;
 
     public static void main(String[] args) {
         Lexer lexer = new Lexer("E:\\desktop\\MyCMMInterpreter\\test_func_call2.cmm");
@@ -76,6 +76,7 @@ public class InterGenerator {
 
     public InterGenerator(GramParser parser) {
         this.parser = parser;
+        optimStringBuilder = new StringBuilder();
     }
 
     public void start() throws SemanticException {
@@ -578,6 +579,7 @@ public class InterGenerator {
         // 判断条件
         String result = genSelect(node, ifBackPatch, argMap);
         if (result.equals(CodeConstant.TRUE)) {
+            optimStringBuilder.append("if语句为True优化\n");
             return;
         }
         if(node.getStatements().size()!=0) {
@@ -585,6 +587,7 @@ public class InterGenerator {
             for (TreeNode node1: node.getStatements()) {
                 result = genSelect(node1, ifBackPatch, argMap);
                 if (result.equals(CodeConstant.TRUE)) {
+                    optimStringBuilder.append("if语句为True优化\n");
                     return;
                 }
             }
@@ -594,6 +597,7 @@ public class InterGenerator {
             codes.add(CodeConstant.inCode);
             generate(node.right.getStatements());
             codes.add(CodeConstant.outCode);
+            optimStringBuilder.append("if语句为False优化\n");
             return;
         }
         if(node.right!=null) {
@@ -1015,6 +1019,10 @@ public class InterGenerator {
             }
         }
         // System.out.println(offsetIntervals);
+        // 存储优化信息
+        declaredVarMap.forEach((k, v)->{
+            optimStringBuilder.append("变量").append(k).append("声明但未使用\n");
+        });
         // 最后剩下的是声明但未使用的变量
         // 使用倒序删除法，不用考虑下标问题
         for (int i=codes.size()-1; i>=0; i--) {
@@ -1053,6 +1061,16 @@ public class InterGenerator {
 
 
     /**
+     * 获取优化信息
+     */
+    public String getOptimInfo() {
+        if (optimStringBuilder.length()==0) {
+            return null;
+        }
+        return optimStringBuilder.toString();
+    }
+
+    /**
      * 抛出除以0异常
      */
     private void divByZeroException() throws SemanticException {
@@ -1079,7 +1097,6 @@ public class InterGenerator {
     /**
      * 返回值类型错误
      * @param retType 实际的返回值类型
-     * @throws SemanticException
      */
     private void returnTypeException(TreeNodeType retType) throws SemanticException{
         String err = String.format("Return value expected %s, found %s", returnType, retType);

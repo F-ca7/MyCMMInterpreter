@@ -7,9 +7,7 @@ import gram.TreeNode;
 import gram.TreeNodeType;
 import javafx.event.ActionEvent;
 import javafx.scene.Node;
-import javafx.scene.control.CheckBox;
-import javafx.scene.control.TreeItem;
-import javafx.scene.control.TreeView;
+import javafx.scene.control.*;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import lex.Lexer;
@@ -17,7 +15,6 @@ import lex.Token;
 import semantics.InterGenerator;
 import semantics.Interpreter;
 
-import javafx.scene.control.TextArea;
 import java.io.File;
 
 public class Controller {
@@ -107,6 +104,10 @@ public class Controller {
             // 是否开启优化
             generator.setOptimEnabled(ifOptimized);
             generator.start();
+            if (ifOptimized) {
+                showOptimizedInfo();
+            }
+
             // 输出函数入口地址
             appendSemanticResult("函数入口地址");
             appendSemanticResult(generator.funcInstrMap.toString());
@@ -118,6 +119,18 @@ public class Controller {
         }catch (SemanticException e){
             appendSemanticResult("语义分析错误！" + e.getMessage());
         }
+
+    }
+
+    private void showOptimizedInfo() {
+        String info = generator.getOptimInfo();
+        if (info == null) {
+            info = "中间代码无可以优化之处。";
+        }
+        Alert informationAlert = new Alert(Alert.AlertType.INFORMATION, info);
+        informationAlert.setTitle("优化结果");
+        informationAlert.setHeaderText("中间代码优化结果");
+        informationAlert.showAndWait();
 
     }
 
