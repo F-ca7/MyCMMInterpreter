@@ -1,4 +1,4 @@
-package symbols;
+package execution.symbols;
 
 /**
  * 记录在符号表中的符号类型

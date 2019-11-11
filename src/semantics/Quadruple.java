@@ -8,23 +8,23 @@ package semantics;
  **/
 public class Quadruple {
     // 操作类型
-    String operation;
+    public  String operation;
 
     // 第一个操作数
-    Operand firstOperand;
+    public  Operand firstOperand;
     // 第二个操作数
-    Operand secondOperand;
+    public  Operand secondOperand;
 
     // 第一个操作数类型
-    OperandType firstOperandType = OperandType.NULL;
+    public  OperandType firstOperandType = OperandType.NULL;
     // 第二个操作数类型
-    OperandType secondOperandType = OperandType.NULL;
+    public  OperandType secondOperandType = OperandType.NULL;
 
     // 目标位置的标识符
-    String dest;
+    public  String dest;
 
     // 跳转指令的语句位置
-    int jumpLocation;
+    public  int jumpLocation;
 
 
     Quadruple(){

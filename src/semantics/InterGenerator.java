@@ -2,9 +2,9 @@ package semantics;
 
 import exception.GramException;
 import exception.SemanticException;
-import gram.GramParser;
-import gram.TreeNode;
-import gram.TreeNodeType;
+import syntax.GramParser;
+import syntax.TreeNode;
+import syntax.TreeNodeType;
 import lex.Lexer;
 
 import java.util.*;

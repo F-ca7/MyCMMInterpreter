@@ -1,4 +1,4 @@
-package gram;
+package syntax;
 
 import exception.GramException;
 import lex.Lexer;

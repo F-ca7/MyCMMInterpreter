@@ -1,4 +1,4 @@
-package gram;
+package syntax;
 
 /**
  * @description 语法树结点类型

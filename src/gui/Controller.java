@@ -2,9 +2,9 @@ package gui;
 
 import exception.ExecutionException;
 import exception.SemanticException;
-import gram.GramParser;
-import gram.TreeNode;
-import gram.TreeNodeType;
+import syntax.GramParser;
+import syntax.TreeNode;
+import syntax.TreeNodeType;
 import javafx.event.ActionEvent;
 import javafx.scene.Node;
 import javafx.scene.control.*;
@@ -13,7 +13,7 @@ import javafx.stage.Stage;
 import lex.Lexer;
 import lex.Token;
 import semantics.InterGenerator;
-import semantics.Interpreter;
+import execution.Interpreter;
 
 import java.io.File;
 
@@ -125,7 +125,7 @@ public class Controller {
     private void showOptimizedInfo() {
         String info = generator.getOptimInfo();
         if (info == null) {
-            info = "中间代码无可以优化之处。";
+            info = "中间代码没有可以优化之处。";
         }
         Alert informationAlert = new Alert(Alert.AlertType.INFORMATION, info);
         informationAlert.setTitle("优化结果");

@@ -1,4 +1,4 @@
-package gram;
+package syntax;
 
 import java.util.LinkedList;
 import java.util.List;

@@ -1,14 +1,15 @@
-package semantics;
+package execution;
 
 import exception.ExecutionException;
 import exception.GramException;
 import exception.SemanticException;
-import gram.GramParser;
-import gram.TreeNode;
-import gram.TreeNodeType;
+import semantics.*;
+import syntax.GramParser;
+import syntax.TreeNode;
+import syntax.TreeNodeType;
 import lex.Lexer;
-import symbols.SymValueType;
-import symbols.Symbol;
+import execution.symbols.SymValueType;
+import execution.symbols.Symbol;
 import java.util.*;
 
 /**

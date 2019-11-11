@@ -1,4 +1,4 @@
-package gram;
+package syntax;
 
 import java.util.List;
 import java.util.Objects;
