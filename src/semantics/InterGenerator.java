@@ -2,7 +2,7 @@ package semantics;
 
 import exception.GramException;
 import exception.SemanticException;
-import syntax.GramParser;
+import syntax.SyntaxParser;
 import syntax.TreeNode;
 import syntax.TreeNodeType;
 import lex.Lexer;
@@ -18,7 +18,7 @@ public class InterGenerator {
     // 中间指令列表
     private List<Quadruple> codes = new ArrayList<>();
     // 语法分析器
-    private GramParser parser;
+    private SyntaxParser parser;
     // 回填列表
     private Stack<Integer> backPatch = new Stack<>();
     // 临时变量序号
@@ -46,7 +46,7 @@ public class InterGenerator {
         Lexer lexer = new Lexer("E:\\desktop\\MyCMMInterpreter\\test_func_call2.cmm");
         lexer.loadSourceCode();
         lexer.loadTokenList();
-        GramParser parser = new GramParser(lexer);
+        SyntaxParser parser = new SyntaxParser(lexer);
         try {
             parser.startParse();
         } catch (GramException e) {
@@ -74,7 +74,7 @@ public class InterGenerator {
     }
 
 
-    public InterGenerator(GramParser parser) {
+    public InterGenerator(SyntaxParser parser) {
         this.parser = parser;
         optimStringBuilder = new StringBuilder();
     }
@@ -121,7 +121,7 @@ public class InterGenerator {
                     genWhile(node, Collections.emptyMap());
                     break;
                 case PRINT:
-                    genPrint(node);
+                    genPrint(node, Collections.emptyMap());
                     break;
                 case SCAN  :
                     genScan(node);
@@ -176,7 +176,7 @@ public class InterGenerator {
                     genWhile(node, argMap);
                     break;
                 case PRINT:
-                    genPrint(node);
+                    genPrint(node, argMap);
                     break;
                 case SCAN  :
                     genScan(node);
@@ -374,14 +374,6 @@ public class InterGenerator {
         return stack.peek().getSymbolName();
     }
 
-    /**
-     * 生成语句块的中间代码
-     */
-    private void genStatementBlock(TreeNode node) throws SemanticException {
-        codes.add(CodeConstant.inCode);
-        generate(node.getStatements());
-        codes.add(CodeConstant.outCode);
-    }
 
     /**
      * 生成语句块的中间代码
@@ -665,7 +657,9 @@ public class InterGenerator {
         loopLevel--;
     }
 
-
+    /**
+     * 生成选择语句
+     */
     private String genSelect(TreeNode node, Stack<Integer> innerBackFills, Map<String, String> argMap) throws SemanticException {
         boolean needBackFill = (node.getCondition() != null);
         if(needBackFill) {
@@ -736,13 +730,19 @@ public class InterGenerator {
     /**
      * 生成输出指令
      */
-    private void genPrint(TreeNode node) {
+    private void genPrint(TreeNode node, Map<String, String> argMap) {
         Quadruple code = new Quadruple();
         code.operation = CodeConstant.PRINT;
+
         switch (node.left.getType()) {
             case IDENTIFIER:
                 code.firstOperandType = OperandType.IDENTIFIER;
-                code.firstOperand.name = node.left.getSymbolName();
+                if (argMap.containsKey(node.left.getSymbolName())) {
+                    // 是参数，替换为参数名
+                    code.firstOperand.name = argMap.get(node.left.getSymbolName());
+                } else {
+                    code.firstOperand.name = node.left.getSymbolName();
+                }
                 break;
             case INT_LITERAL:
                 code.firstOperandType = OperandType.INT_LITERAL;
@@ -1018,7 +1018,6 @@ public class InterGenerator {
                 offsetIntervals.add(i);
             }
         }
-        // System.out.println(offsetIntervals);
         // 存储优化信息
         declaredVarMap.forEach((k, v)->{
             optimStringBuilder.append("变量").append(k).append("声明但未使用\n");

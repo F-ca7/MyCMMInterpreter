@@ -1,16 +1,17 @@
 func main() void{
     int m; 
-    m = test(4);
+    m = fact(5);
     print m;
 	return;
 }
 
-func test(int a) int {
+func fact(int a) int {
+    print a;
     if(a==1) {
         return 1;
     }
     int m;
-    m = test(a-1);
+    m = fact(a-1);
     int i = m*a;
     return i;
 }

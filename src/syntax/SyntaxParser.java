@@ -13,7 +13,7 @@ import java.util.*;
  * @description 语法分析器, 递归下降分析
  * @date 2019/10/22 16:36
  **/
-public class GramParser {
+public class SyntaxParser {
     // 词法分析器
     private Lexer lexer;
     // 当前token
@@ -56,7 +56,7 @@ public class GramParser {
 
 
 
-    public GramParser(Lexer lexicalParser) {
+    public SyntaxParser(Lexer lexicalParser) {
         this.lexer = lexicalParser;
     }
 
@@ -66,7 +66,7 @@ public class GramParser {
 //        Lexer lexer = new Lexer("Y:\\desktop\\MyCMMInterpreter\\test_gram_1.cmm");
         lexer.loadSourceCode();
         lexer.loadTokenList();
-        GramParser parser = new GramParser(lexer);
+        SyntaxParser parser = new SyntaxParser(lexer);
         try {
             parser.startParse();
         }  catch (GramException e) {
@@ -155,7 +155,6 @@ public class GramParser {
         // 左结点: 函数签名
         node.left = parseFuncSignature();
         // 右结点: 具体函数实现的语句块
-        // todo 考虑为封装成函数语句块
         node.right = parseStatementBlock(true);
         FuncDeclaration funcDeclaration = new FuncDeclaration(funcName, node.left.left.getArgList(), node.left.right.getType());
         if (definedFuncs.contains(funcDeclaration)) {
@@ -1219,7 +1218,7 @@ public class GramParser {
         left.setType(TreeNodeType.IDENTIFIER);
         left.setSymbolName(tokens.get(0).getStringValue());
         node.left = left;
-        // todo 此处不太安全
+
         if(tokens.size() == 4) {
             // 如果大小为4的话
             // 说明是最基础的一维数组+索引

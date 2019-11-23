@@ -27,6 +27,7 @@ public enum TokenType {
     MINUS,      // -
     MULTIPLY,   // *
     DIVIDE,     // /
+
     ASSIGN,     // =
 
     // 关系运算符

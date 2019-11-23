@@ -2,7 +2,7 @@ package gui;
 
 import exception.ExecutionException;
 import exception.SemanticException;
-import syntax.GramParser;
+import syntax.SyntaxParser;
 import syntax.TreeNode;
 import syntax.TreeNodeType;
 import javafx.event.ActionEvent;
@@ -21,7 +21,7 @@ public class Controller {
     // 词法分析器
     Lexer lexer;
     // 语法分析器
-    GramParser parser;
+    SyntaxParser parser;
     // 语义分析中间代码生成器
     InterGenerator generator;
     // 解释执行器
@@ -76,7 +76,7 @@ public class Controller {
         if (lexer==null) {
             return;
         }
-        parser = new GramParser(lexer);
+        parser = new SyntaxParser(lexer);
         try {
             parser.startParse();
         }  catch (Exception e) {
@@ -244,13 +244,25 @@ public class Controller {
             return;
         }
         // 带关系表达式条件单独设置
-        if (stmtNode.getType() == TreeNodeType.WHILE || stmtNode.getType() == TreeNodeType.IF) {
+        if (stmtNode.getType() == TreeNodeType.WHILE || stmtNode.getType() == TreeNodeType.IF || stmtNode.getType() == TreeNodeType.ELSE_IF) {
             TreeItem<String> conditionTreeItem = new TreeItem<>(
                     stmtNode.getCondition().getType().toString());
 
             traverseStmtNode(conditionTreeItem, stmtNode.getCondition());
 
             stmtSubTree.getChildren().add(conditionTreeItem);
+
+            if (stmtNode.getType() == TreeNodeType.IF) {
+                // else if的情况
+                if (!stmtNode.getStatements().isEmpty()) {
+                    TreeItem<String> subIfTreeItem;
+                    for (TreeNode node: stmtNode.getStatements()) {
+                        subIfTreeItem = new TreeItem<>(node.getType().toString());
+                        traverseStmtNode(subIfTreeItem, node);
+                        stmtSubTree.getChildren().add(subIfTreeItem);
+                    }
+                }
+            }
         }
         if (stmtNode.left != null) {
             TreeItem<String> leftTreeItem;
@@ -260,8 +272,14 @@ public class Controller {
                             +stmtNode.left.getSymbolName());
                     break;
                 case INT_LITERAL:
-                    leftTreeItem = new TreeItem<>(stmtNode.left.getType().toString()+": "
-                            +stmtNode.left.getIntValue());
+                    if (stmtNode.left.isNegative()) {
+                        leftTreeItem = new TreeItem<>(stmtNode.left.getType().toString()+": "
+                                +(0-stmtNode.left.getIntValue()));
+                    } else{
+                        leftTreeItem = new TreeItem<>(stmtNode.left.getType().toString()+": "
+                                +stmtNode.left.getIntValue());
+                    }
+
                     break;
                 case REAL_LITERAL:
                     leftTreeItem = new TreeItem<>(stmtNode.left.getType().toString()+": "
@@ -277,8 +295,10 @@ public class Controller {
                         leftTreeItem.getChildren().add(subTreeItem);
                     }
                     break;
+
                 default:
                     leftTreeItem = new TreeItem<>(stmtNode.left.getType().toString());
+                    break;
             }
             traverseStmtNode(leftTreeItem, stmtNode.left);
             stmtSubTree.getChildren().add(leftTreeItem);
@@ -312,6 +332,7 @@ public class Controller {
                     break;
                 default:
                     rightTreeItem = new TreeItem<>(stmtNode.right.getType().toString());
+                    break;
             }
             traverseStmtNode(rightTreeItem, stmtNode.right);
             stmtSubTree.getChildren().add(rightTreeItem);

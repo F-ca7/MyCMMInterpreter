@@ -23,6 +23,8 @@ func main() void{
 		}
 	}
 	print sum;
+	sum = add(1, 99);
+	print sum;
 	return;
 }
 

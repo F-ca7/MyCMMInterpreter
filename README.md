@@ -49,11 +49,11 @@ statement -> declare-stmt | assign-stmt | if-stmt | while-stmt | print-stmt | sc
 
 stmt-block -> { stmt-sequence }
 
-if-stmt -> if ( exp ) stmt-block | if ( exp ) stmt-block else stmt-block | if ( exp ) stmt-block
+if-stmt -> if ( rel-exp ) stmt-block | if ( rel-exp ) stmt-block else stmt-block | if ( rel-exp ) stmt-block
         else-ifs
-else-ifs -> else if ( exp ) stmt-block else-ifs | else stmt-block | else if ( exp ) stmt-block
+else-ifs -> else if ( rel-exp ) stmt-block else-ifs | else stmt-block | else if ( rel-exp ) stmt-block
 
-while-stmt -> while ( exp ) stmt-block
+while-stmt -> while ( rel-exp ) stmt-block
 
 assign-stmt -> variable = exp ;
 print-stmt -> print exp ;
@@ -63,9 +63,9 @@ declare-stmt -> (int | real | char) ((identifier [ = exp ]) | (identifier [ exp 
 
 variable -> identifier [ [ exp ] ]
 
-exp -> addtive-exp logical-op addtive-exp | addtive-exp
-
-addtive-exp -> term add-op additive-exp | term
+exp ->  exp
+rel-exp -> exp logical-op exp
+exp -> term add-op exp | term
 term -> factor mul-op term | factor
 
 factor -> ( exp ) | number | variable | add-op exp
@@ -93,7 +93,6 @@ mul-op -> * | /
 ```
 jne,条件,null,目标
 jmp,null,null,目标
-read,null,null,变量
 print,变量,null,null
 scan,变量,null,null
 in,null,null,null

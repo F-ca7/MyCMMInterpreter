@@ -109,6 +109,7 @@ public class Lexer {
 
     public Lexer(String path) {
         this.srcFilePath = path;
+        lineNum = 1;
     }
 
     /**
